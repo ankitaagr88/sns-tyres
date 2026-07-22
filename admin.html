@@ -127,6 +127,20 @@
   .page.active { display: block; }
   .lowest-price { color: var(--error); font-weight: 700; }
 
+  /* Broadcast recipient picker */
+  .pick-list {
+    max-height: 300px; overflow-y: auto; border: 1px solid var(--border);
+    border-radius: 10px; margin-top: 8px;
+  }
+  .pick-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px;
+  }
+  .pick-row:last-child { border-bottom: 0; }
+  .pick-row:hover { background: #FBFAF8; }
+  .pick-row input { width: 16px; height: 16px; flex: 0 0 auto; }
+  .pick-row .meta { color: var(--gray); font-size: 12px; }
+
   .status { margin: 10px 0 0; font-size: 13px; padding: 9px 12px; border-radius: 8px; background: #EAF4EE; color: var(--success); }
   .status:empty { display: none; padding: 0; margin: 0; }
   .status.error { background: var(--coral-tint); color: var(--error); }
@@ -286,10 +300,11 @@
           <div class="card">
             <h2>Schedule a message</h2>
             <div class="row">
-              <div><label>Customer Phone</label><input id="m_phone" /></div>
+              <div><label>Customer Phone</label><input id="m_phone" oninput="fetchForMessage()" /></div>
               <div class="grow"><label>Customer Name</label><input id="m_name" /></div>
               <div><label>Send On</label><input id="m_send_on" type="date" /></div>
             </div>
+            <div id="m_custinfo" class="status"></div>
             <div class="row">
               <div class="grow"><label>Start from a template (then edit freely)</label>
                 <select id="m_template" onchange="applyTemplate()"><option value="">— pick one —</option></select>
@@ -301,6 +316,29 @@
             </div>
             <div id="status-addmessage" class="status"></div>
           </div>
+
+          <div class="card">
+            <h2>Broadcast to many customers</h2>
+            <div class="page-desc" style="margin-bottom:10px;">Tick customers, pick a template, schedule — each person gets the message with <strong>their own name</strong> in it, as a separate row in the queue.</div>
+            <div class="row">
+              <div class="grow"><label>Search customers</label><input id="bc_filter" oninput="renderBroadcastList()" placeholder="Name or phone" /></div>
+              <button class="btn ghost" onclick="toggleAllBroadcast(true)">Select all shown</button>
+              <button class="btn ghost" onclick="toggleAllBroadcast(false)">Clear</button>
+            </div>
+            <div class="pick-list" id="bcList"><div class="empty-msg" style="padding:12px;">Loading customers…</div></div>
+            <div class="row" style="margin-top:12px;">
+              <div class="grow"><label>Template</label>
+                <select id="bc_template" onchange="applyBroadcastTemplate()"><option value="">— pick one —</option></select>
+              </div>
+              <div><label>Send On</label><input id="bc_send_on" type="date" /></div>
+            </div>
+            <div class="row">
+              <div class="grow"><label>Message ({name} becomes each customer's name)</label><input id="bc_text" /></div>
+              <button class="btn" onclick="sendBroadcast()">Schedule for Selected</button>
+            </div>
+            <div id="status-broadcast" class="status"></div>
+          </div>
+
           <div class="card">
             <div class="row">
               <div><label>Show</label><select id="msg_filter" onchange="renderMessages()"><option value="due">Due now</option><option value="scheduled">All scheduled</option><option value="">Everything</option></select></div>
@@ -319,10 +357,11 @@
             <h2>Record a sale</h2>
             <div class="row">
               <div><label>Tyre Code</label><input id="os_tyre_id" /></div>
-              <div><label>Customer Phone</label><input id="os_phone" /></div>
+              <div><label>Customer Phone</label><input id="os_phone" oninput="fetchForOrder()" /></div>
               <div class="grow"><label>Customer Name</label><input id="os_name" /></div>
               <div><label>Invoice No.</label><input id="os_invoice" /></div>
             </div>
+            <div id="os_custinfo" class="status"></div>
             <div class="row">
               <div><label>Vehicle Number</label><input id="os_vehicle_number" /></div>
               <div><label>Vehicle Name</label><input id="os_vehicle_name" /></div>
@@ -709,6 +748,64 @@ const MESSAGE_TEMPLATES = [
 document.getElementById('m_template').innerHTML =
   '<option value="">— pick one —</option>' +
   MESSAGE_TEMPLATES.map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
+document.getElementById('bc_template').innerHTML =
+  '<option value="">— pick one —</option>' +
+  MESSAGE_TEMPLATES.map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
+
+// ---------- Phone → customer auto-fetch (used on every phone field) ----------
+// Debounced; fires at 10 digits. Returns the fetched customer to the caller's
+// filler function, and never overwrites a field the admin already typed in.
+function describeCustomer(r) {
+  const bits = [];
+  if (r.tyres_bought) bits.push(r.tyres_bought + ' tyre' + (r.tyres_bought > 1 ? 's' : '') + ' bought');
+  if (r.first_purchase_date) bits.push('anniversary ' + dmy(r.first_purchase_date));
+  if (r.vehicles && r.vehicles.length) {
+    bits.push('cars: ' + r.vehicles.map(v =>
+      v.vehicle_number + (v.vehicle_name ? ' (' + (v.vehicle_name + ' ' + v.car_model).trim() + ')' : '')).join(', '));
+  }
+  return bits.join(' · ');
+}
+const _fetchTimers = {};
+const _fetchLast = {};
+function autoFetchCustomer(inputId, onResult) {
+  clearTimeout(_fetchTimers[inputId]);
+  _fetchTimers[inputId] = setTimeout(async () => {
+    const digits = document.getElementById(inputId).value.replace(/\D/g, '');
+    if (digits.length < 10) { onResult(null); _fetchLast[inputId] = ''; return; }
+    if (digits === _fetchLast[inputId]) return;
+    _fetchLast[inputId] = digits;
+    try {
+      const r = await jsonp('getCustomerByPhone', { customer_phone: digits });
+      onResult(r && r.found ? r : null);
+    } catch (e) { onResult(null); }
+  }, 350);
+}
+
+function fetchForMessage() {
+  autoFetchCustomer('m_phone', r => {
+    const info = document.getElementById('m_custinfo');
+    if (!r) { info.textContent = ''; return; }
+    const nameEl = document.getElementById('m_name');
+    if (!nameEl.value) nameEl.value = r.customer_name;
+    info.textContent = r.customer_name + ' — ' + (describeCustomer(r) || 'known customer');
+  });
+}
+
+function fetchForOrder() {
+  autoFetchCustomer('os_phone', r => {
+    const info = document.getElementById('os_custinfo');
+    if (!r) { info.textContent = ''; return; }
+    const fillIfEmpty = (id, v) => { const el = document.getElementById(id); if (!el.value && v) el.value = v; };
+    fillIfEmpty('os_name', r.customer_name);
+    // One known car → safe to prefill; several → shown in the info line, admin picks.
+    if (r.vehicles && r.vehicles.length === 1) {
+      fillIfEmpty('os_vehicle_number', r.vehicles[0].vehicle_number);
+      fillIfEmpty('os_vehicle_name', r.vehicles[0].vehicle_name);
+      fillIfEmpty('os_car_model', r.vehicles[0].car_model);
+    }
+    info.textContent = r.customer_name + ' — ' + (describeCustomer(r) || 'known customer');
+  });
+}
 
 function applyTemplate() {
   const i = document.getElementById('m_template').value;
@@ -720,10 +817,74 @@ function applyTemplate() {
 
 let messagesCache = [];
 async function loadMessages() {
+  // The broadcast picker needs the customer list too — load both together.
+  if (!customersCache.length) {
+    const c = await jsonp('getAllCustomers', {});
+    if (!c.error) customersCache = c;
+  }
+  renderBroadcastList();
   const rows = await jsonp('getMessages', {});
   if (rows.error) { document.getElementById('msgTableWrap').innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
   messagesCache = rows;
   renderMessages();
+}
+
+// ---------- Broadcast ----------
+const broadcastPicked = {}; // phone → {phone, name}; survives re-filtering
+function renderBroadcastList() {
+  const q = (document.getElementById('bc_filter').value || '').toLowerCase();
+  const rows = customersCache.filter(c =>
+    !q || String(c.customer_name || '').toLowerCase().includes(q) || String(c.customer_phone || '').includes(q));
+  const wrap = document.getElementById('bcList');
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg" style="padding:12px;">No customers' + (q ? ' match' : ' yet') + '.</div>'; return; }
+  wrap.innerHTML = rows.map(c => {
+    const phone = String(c.customer_phone).replace(/\D/g, '');
+    const meta = [
+      c.tyres_bought ? c.tyres_bought + ' tyres' : 'no purchase yet',
+      c.first_purchase ? 'anniv ' + dmy(c.first_purchase) : '',
+      (c.vehicles || []).join(', '),
+    ].filter(Boolean).join(' · ');
+    return `<label class="pick-row"><input type="checkbox" data-phone="${esc(phone)}" data-name="${esc(c.customer_name)}"`
+      + `${broadcastPicked[phone] ? ' checked' : ''} onchange="pickBroadcast(this)">`
+      + `<span><strong>${esc(c.customer_name)}</strong> — ${esc(c.customer_phone)}<br><span class="meta">${esc(meta)}</span></span></label>`;
+  }).join('');
+  updateBroadcastCount();
+}
+function pickBroadcast(cb) {
+  if (cb.checked) broadcastPicked[cb.dataset.phone] = { phone: cb.dataset.phone, name: cb.dataset.name };
+  else delete broadcastPicked[cb.dataset.phone];
+  updateBroadcastCount();
+}
+function toggleAllBroadcast(on) {
+  document.querySelectorAll('#bcList input[type=checkbox]').forEach(cb => {
+    cb.checked = on;
+    pickBroadcast(cb);
+  });
+  if (!on) { Object.keys(broadcastPicked).forEach(k => delete broadcastPicked[k]); updateBroadcastCount(); }
+}
+function updateBroadcastCount() {
+  const n = Object.keys(broadcastPicked).length;
+  setStatus('status-broadcast', n ? n + ' customer' + (n > 1 ? 's' : '') + ' selected.' : '');
+}
+function applyBroadcastTemplate() {
+  const i = document.getElementById('bc_template').value;
+  if (i === '') return;
+  // Keep {name} literal here — the backend swaps in each recipient's own name.
+  document.getElementById('bc_text').value = MESSAGE_TEMPLATES[i].text;
+}
+async function sendBroadcast() {
+  const picked = Object.values(broadcastPicked);
+  if (!picked.length) { setStatus('status-broadcast', 'Tick at least one customer first.', true); return; }
+  const result = await jsonp('scheduleBroadcast', {
+    recipients: JSON.stringify(picked),
+    message: document.getElementById('bc_text').value,
+    send_on: document.getElementById('bc_send_on').value,
+  });
+  if (result.error) { setStatus('status-broadcast', result.error, true); return; }
+  setStatus('status-broadcast', result.scheduled + ' messages scheduled — each with the customer\'s own name.');
+  toggleAllBroadcast(false);
+  document.getElementById('bc_text').value = '';
+  loadMessages();
 }
 function renderMessages() {
   const f = document.getElementById('msg_filter').value;

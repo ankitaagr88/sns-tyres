@@ -789,9 +789,13 @@ function lookupCustomer() {
       // Dates arrive as ISO strings — a date input needs YYYY-MM-DD.
       fillIfEmpty('sell_customer_dob', String(r.customer_dob || '').slice(0, 10));
 
+      const anniv = r.first_purchase_date
+        ? ' Anniversary: ' + new Date(r.first_purchase_date).toLocaleDateString() + '.'
+        : '';
       el.textContent = r.customer_name
-        + (r.tyres_bought ? ' — repeat customer (' + r.tyres_bought + ' tyre' + (r.tyres_bought > 1 ? 's' : '') + ' before). Details filled.'
-                          : ' — known customer. Details filled.');
+        + (r.tyres_bought ? ' — repeat customer (' + r.tyres_bought + ' tyre' + (r.tyres_bought > 1 ? 's' : '') + ' before).'
+                          : ' — known customer.')
+        + anniv + ' Details filled.';
       chipRow.innerHTML = (r.vehicles || []).map((v, i) =>
         `<button type="button" class="chip" onclick="useVehicle(${i})">🚗 ${v.vehicle_number}${v.vehicle_name ? ' · ' + v.vehicle_name + ' ' + v.car_model : ''}</button>`
       ).join('');
