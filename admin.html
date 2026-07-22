@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SNS Tyres — Admin Dashboard</title>
-<link rel="icon" href="assets/ai4work-mark.svg" />
+<link rel="icon" href="assets/sns-mark.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap" rel="stylesheet">
@@ -175,7 +175,10 @@
           <div class="section-label">CRM</div>
           <button data-page="customers" onclick="showPage('customers')">Customers</button>
           <button data-page="leads" onclick="showPage('leads')">Lead Pipeline</button>
+          <button data-page="referrals" onclick="showPage('referrals')">Referrals</button>
+          <button data-page="messages" onclick="showPage('messages')">Messages</button>
           <div class="section-label">Operations</div>
+          <button data-page="orders" onclick="showPage('orders')">Orders</button>
           <button data-page="subdealers" onclick="showPage('subdealers')">Sub-Dealers</button>
           <button data-page="stock" onclick="showPage('stock')">Stock Summary</button>
           <div class="section-label">Money</div>
@@ -215,7 +218,19 @@
         <!-- CUSTOMERS -->
         <div id="page-customers" class="page">
           <h1>Customers</h1>
-          <div class="page-desc">Everyone who has ever bought a tyre, grouped by phone number. Click a row for the full profile.</div>
+          <div class="page-desc">Everyone who has bought a tyre, plus customers added before their first purchase — grouped by phone number. Click a row for the full profile. (To import an old customer book, paste rows straight into the Customers tab in the Sheet.)</div>
+          <div class="card">
+            <h2>Add a customer</h2>
+            <div class="row">
+              <div class="grow"><label>Name</label><input id="ac_name" /></div>
+              <div><label>Phone</label><input id="ac_phone" /></div>
+              <div class="grow"><label>Address</label><input id="ac_address" /></div>
+              <div><label>Date of Birth</label><input id="ac_dob" type="date" /></div>
+              <div><label>Referred By</label><input id="ac_referred_by" /></div>
+              <button class="btn" onclick="addCustomer()">Add</button>
+            </div>
+            <div id="status-addcustomer" class="status"></div>
+          </div>
           <div class="card">
             <div class="row">
               <div class="grow"><label>Search name / phone</label><input id="cust_filter" oninput="renderCustomers()" placeholder="Type to filter" /></div>
@@ -251,6 +266,74 @@
             </div>
             <div class="tableWrap" id="leadsTableWrap"><div class="empty-msg">Loading…</div></div>
             <div id="status-leads" class="status"></div>
+          </div>
+        </div>
+
+        <!-- REFERRALS -->
+        <div id="page-referrals" class="page">
+          <h1>Referrals</h1>
+          <div class="page-desc">Who sends customers to SNS, ranked — so crediting and rewarding good referrers is a ten-second read. Captured via the "Referred By" field on every sale and new customer.</div>
+          <div class="card">
+            <div class="row"><button class="btn ghost" onclick="loadReferrals()">Refresh</button></div>
+            <div class="tableWrap" id="refTableWrap"><div class="empty-msg">Loading…</div></div>
+          </div>
+        </div>
+
+        <!-- MESSAGES -->
+        <div id="page-messages" class="page">
+          <h1>Scheduled Messages</h1>
+          <div class="page-desc">Queue a message for a date — birthday wish, anniversary greeting, service reminder. On the day it appears in the Due list: tap WhatsApp, the message opens pre-filled, send, mark sent. (Fully automatic sending would need a paid SMS/WhatsApp gateway — deliberately not used.)</div>
+          <div class="card">
+            <h2>Schedule a message</h2>
+            <div class="row">
+              <div><label>Customer Phone</label><input id="m_phone" /></div>
+              <div class="grow"><label>Customer Name</label><input id="m_name" /></div>
+              <div><label>Send On</label><input id="m_send_on" type="date" /></div>
+            </div>
+            <div class="row">
+              <div class="grow"><label>Message</label><input id="m_text" placeholder="e.g. Happy anniversary from SNS Tyres! Visit us for a free checkup this month." /></div>
+              <button class="btn" onclick="scheduleMessage()">Schedule</button>
+            </div>
+            <div id="status-addmessage" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div><label>Show</label><select id="msg_filter" onchange="renderMessages()"><option value="due">Due now</option><option value="scheduled">All scheduled</option><option value="">Everything</option></select></div>
+              <button class="btn ghost" onclick="loadMessages()">Refresh</button>
+            </div>
+            <div class="tableWrap" id="msgTableWrap"><div class="empty-msg">Loading…</div></div>
+            <div id="status-messages" class="status"></div>
+          </div>
+        </div>
+
+        <!-- ORDERS -->
+        <div id="page-orders" class="page">
+          <h1>Orders</h1>
+          <div class="page-desc">Every sale, newest first. Sales can also be recorded here — for counter work the Employee app's Sell screen (with scanning) is faster.</div>
+          <div class="card">
+            <h2>Record a sale</h2>
+            <div class="row">
+              <div><label>Tyre Code</label><input id="os_tyre_id" /></div>
+              <div><label>Customer Phone</label><input id="os_phone" /></div>
+              <div class="grow"><label>Customer Name</label><input id="os_name" /></div>
+              <div><label>Invoice No.</label><input id="os_invoice" /></div>
+            </div>
+            <div class="row">
+              <div><label>Vehicle Number</label><input id="os_vehicle_number" /></div>
+              <div><label>Vehicle Name</label><input id="os_vehicle_name" /></div>
+              <div><label>Car Model</label><input id="os_car_model" /></div>
+              <div><label>Referred By</label><input id="os_referred_by" /></div>
+              <div><label>Via Sub-Dealer (blank = direct)</label><input id="os_sub_dealer" placeholder="SD-001" /></div>
+              <button class="btn" onclick="recordSaleAdmin()">Record Sale</button>
+            </div>
+            <div id="status-addsale" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="grow"><label>Search customer / invoice / tyre code</label><input id="order_filter" oninput="renderOrders()" placeholder="Type to filter" /></div>
+              <button class="btn ghost" onclick="loadOrders()">Refresh</button>
+            </div>
+            <div class="tableWrap" id="ordersTableWrap"><div class="empty-msg">Loading…</div></div>
           </div>
         </div>
 
@@ -468,6 +551,7 @@ function doLogout() {
 // ---------- Navigation ----------
 const PAGE_LOADERS = {
   overview: loadOverview, customers: loadCustomers, leads: loadLeads,
+  referrals: loadReferrals, messages: loadMessages, orders: loadOrders,
   subdealers: loadSubDealers, stock: loadStock, purchases: loadPurchases,
   payments: loadPayments, performance: null, export: null, employees: loadStaff,
 };
@@ -560,6 +644,126 @@ async function openCustomer(phone) {
     + '</tbody></table></div>';
   body.innerHTML = html;
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function addCustomer() {
+  const result = await jsonp('addCustomer', {
+    customer_name: document.getElementById('ac_name').value,
+    customer_phone: document.getElementById('ac_phone').value,
+    customer_address: document.getElementById('ac_address').value,
+    customer_dob: document.getElementById('ac_dob').value,
+    referred_by: document.getElementById('ac_referred_by').value,
+  });
+  if (result.error) { setStatus('status-addcustomer', result.error, true); return; }
+  setStatus('status-addcustomer', 'Customer added — they\'ll prefill on the Sell screen from their phone number.');
+  ['ac_name', 'ac_phone', 'ac_address', 'ac_referred_by'].forEach(id => document.getElementById(id).value = '');
+  loadCustomers();
+}
+
+// ---------- Referrals ----------
+async function loadReferrals() {
+  const wrap = document.getElementById('refTableWrap');
+  const rows = await jsonp('getReferrals', {});
+  if (rows.error) { wrap.innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No referrals recorded yet — fill "Referred By" on sales and new customers and they\'ll rank here.</div>'; return; }
+  wrap.innerHTML = '<table><thead><tr><th>Referrer</th><th>Customers Referred</th><th>Revenue From Referrals</th><th>Who They Sent</th></tr></thead><tbody>'
+    + rows.map(r => `<tr><td><strong>${esc(r.referrer)}</strong></td><td>${r.customers_referred}</td>`
+      + `<td>${money(r.revenue)}</td><td>${esc(r.customers.map(c => c.name).join(', '))}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+// ---------- Scheduled messages ----------
+let messagesCache = [];
+async function loadMessages() {
+  const rows = await jsonp('getMessages', {});
+  if (rows.error) { document.getElementById('msgTableWrap').innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  messagesCache = rows;
+  renderMessages();
+}
+function renderMessages() {
+  const f = document.getElementById('msg_filter').value;
+  let rows = messagesCache;
+  if (f === 'due') rows = rows.filter(m => m.due);
+  if (f === 'scheduled') rows = rows.filter(m => m.status === 'scheduled');
+  const wrap = document.getElementById('msgTableWrap');
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-msg">' + (f === 'due' ? 'Nothing due — all caught up.' : 'No messages here yet.') + '</div>';
+    return;
+  }
+  const badge = { scheduled: 'new', sent: 'ok', cancelled: 'bad' };
+  wrap.innerHTML = '<table><thead><tr><th>Send On</th><th>Customer</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
+    + rows.map(m => `<tr${m.due ? ' style="background:#FDF6E7;"' : ''}>`
+      + `<td>${dmy(m.send_on)}${m.due ? ' <span class="badge warn">Due</span>' : ''}</td>`
+      + `<td><strong>${esc(m.customer_name)}</strong><br><span style="color:var(--gray);font-size:12px;">${esc(m.customer_phone)}</span></td>`
+      + `<td style="max-width:340px;">${esc(m.message)}</td>`
+      + `<td><span class="badge ${badge[m.status] || 'new'}">${esc(m.status)}</span></td>`
+      + `<td>${m.status === 'scheduled'
+          ? `<a href="${esc(m.wa_url)}" target="_blank" rel="noopener"><button class="btn small">WhatsApp</button></a>`
+            + ` <button class="btn small ghost" onclick="setMessageStatus('${esc(m.message_id)}','sent')">Mark Sent</button>`
+            + ` <button class="btn small ghost" onclick="setMessageStatus('${esc(m.message_id)}','cancelled')">Cancel</button>`
+          : ''}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+async function scheduleMessage() {
+  const result = await jsonp('scheduleMessage', {
+    customer_phone: document.getElementById('m_phone').value,
+    customer_name: document.getElementById('m_name').value,
+    send_on: document.getElementById('m_send_on').value,
+    message: document.getElementById('m_text').value,
+  });
+  if (result.error) { setStatus('status-addmessage', result.error, true); return; }
+  setStatus('status-addmessage', result.message_id + ' scheduled.');
+  ['m_phone', 'm_name', 'm_text'].forEach(id => document.getElementById(id).value = '');
+  loadMessages();
+}
+async function setMessageStatus(id, status) {
+  const result = await jsonp('updateMessageStatus', { message_id: id, status });
+  if (result.error) { setStatus('status-messages', result.error, true); return; }
+  setStatus('status-messages', id + ' → ' + status + '.');
+  loadMessages();
+}
+
+// ---------- Orders ----------
+let ordersCache = [];
+async function loadOrders() {
+  const rows = await jsonp('getSales', {});
+  if (rows.error) { document.getElementById('ordersTableWrap').innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  ordersCache = rows;
+  renderOrders();
+}
+function renderOrders() {
+  const q = (document.getElementById('order_filter').value || '').toLowerCase();
+  const rows = ordersCache.filter(o =>
+    !q || String(o.customer_name).toLowerCase().includes(q) ||
+    String(o.invoice_no).toLowerCase().includes(q) ||
+    String(o.tyre_id).toLowerCase().includes(q) ||
+    String(o.customer_phone).includes(q));
+  const wrap = document.getElementById('ordersTableWrap');
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No sales' + (q ? ' match that search' : ' yet') + '.</div>'; return; }
+  wrap.innerHTML = '<table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Tyre</th><th>Amount</th><th>Vehicle</th><th>Via</th><th>By</th></tr></thead><tbody>'
+    + rows.map(o => `<tr><td>${dmy(o.sale_date)}</td><td>${esc(o.invoice_no)}</td>`
+      + `<td><strong>${esc(o.customer_name)}</strong><br><span style="color:var(--gray);font-size:12px;">${esc(o.customer_phone)}</span></td>`
+      + `<td>${esc(o.brand)} ${esc(o.pattern)} ${esc(o.size)}<br><span style="color:var(--gray);font-size:12px;">${esc(o.tyre_id)}</span></td>`
+      + `<td>${o.amount ? money(o.amount) : ''}</td><td>${esc(o.vehicle_number)}</td>`
+      + `<td>${esc(o.sold_via_sub_dealer_id) || 'Direct'}</td><td>${esc(o.handled_by)}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+async function recordSaleAdmin() {
+  const result = await jsonp('recordSale', {
+    tyre_id: document.getElementById('os_tyre_id').value,
+    customer_phone: document.getElementById('os_phone').value,
+    customer_name: document.getElementById('os_name').value,
+    invoice_no: document.getElementById('os_invoice').value,
+    vehicle_number: document.getElementById('os_vehicle_number').value,
+    vehicle_name: document.getElementById('os_vehicle_name').value,
+    car_model: document.getElementById('os_car_model').value,
+    referred_by: document.getElementById('os_referred_by').value,
+    sold_via_sub_dealer_id: document.getElementById('os_sub_dealer').value,
+  });
+  if (result.error) { setStatus('status-addsale', result.error, true); return; }
+  setStatus('status-addsale', 'Sale recorded — warranty till ' + new Date(result.warranty_expiry_date).toLocaleDateString() + '.');
+  ['os_tyre_id', 'os_phone', 'os_name', 'os_invoice', 'os_vehicle_number', 'os_vehicle_name', 'os_car_model', 'os_referred_by', 'os_sub_dealer'].forEach(id => document.getElementById(id).value = '');
+  loadOrders();
 }
 
 // ---------- Leads ----------
