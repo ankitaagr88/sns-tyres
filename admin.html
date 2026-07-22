@@ -291,7 +291,12 @@
               <div><label>Send On</label><input id="m_send_on" type="date" /></div>
             </div>
             <div class="row">
-              <div class="grow"><label>Message</label><input id="m_text" placeholder="e.g. Happy anniversary from SNS Tyres! Visit us for a free checkup this month." /></div>
+              <div class="grow"><label>Start from a template (then edit freely)</label>
+                <select id="m_template" onchange="applyTemplate()"><option value="">— pick one —</option></select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="grow"><label>Message</label><input id="m_text" placeholder="Pick a template above, or write your own. {name} becomes the customer's name." /></div>
               <button class="btn" onclick="scheduleMessage()">Schedule</button>
             </div>
             <div id="status-addmessage" class="status"></div>
@@ -673,6 +678,46 @@ async function loadReferrals() {
 }
 
 // ---------- Scheduled messages ----------
+// Templates: written to be read, not skimmed past — a tyre shop can be
+// charming. {name} is replaced with the customer's name at schedule time.
+// Wording tweaks welcome: this list is the only place to edit.
+const MESSAGE_TEMPLATES = [
+  { label: '🎂 Birthday',
+    text: 'Happy birthday, {name}! 🎂 May your year roll as smoothly as a freshly balanced wheel. Come by SNS Tyres this month for a free pressure check — our gift, no strings (or tubes) attached.' },
+  { label: '🎉 Purchase anniversary',
+    text: '{name}, it\'s been a year since your tyres joined our family! Bring the car around for a free checkup — let\'s make sure they\'re still gripping like day one. — SNS Tyres' },
+  { label: '🌧️ Monsoon tread check',
+    text: 'Rains are coming, {name}! Wet roads and worn treads are a terrible jodi. Give us 5 minutes for a free tread check at SNS Tyres — drive in, drive safe.' },
+  { label: '🔄 Rotation & balancing due',
+    text: '{name}, your tyres called 😄 They said it\'s time for rotation and balancing — it keeps them wearing evenly and living longer. Swing by SNS Tyres this week?' },
+  { label: '💨 Nitrogen top-up',
+    text: 'Quick one, {name}: when did your tyres last get a nitrogen top-up? Cooler tyres, better mileage, longer life. Top-up\'s free for you at SNS Tyres this week.' },
+  { label: '🙏 Referral thank-you',
+    text: '{name}, someone you sent walked into the shop today — thank you! Friends like you keep us rolling. Your next wheel alignment is on the house.' },
+  { label: '✨ Diwali wishes',
+    text: 'Happy Diwali, {name}! ✨ May the road ahead be bright, smooth and completely puncture-free. Rolling wishes from all of us at SNS Tyres.' },
+  { label: '☀️ Summer heat check',
+    text: 'Summer\'s here, {name} ☀️ Hot roads are hard on tyres — pressure drops, rubber tires faster (pun intended). Free 10-minute summer check at SNS Tyres.' },
+  { label: '🛣️ Before a road trip',
+    text: 'Planning a trip, {name}? Before the highway gets you, give us 10 minutes — alignment, pressure, tread. Reach happy, return happy. — SNS Tyres' },
+  { label: '☕ Long time no see',
+    text: '{name}, it\'s been a while! Your tyres have seen many kilometres since we last met. Drop in for a free health check — the chai\'s on us. ☕ — SNS Tyres' },
+  { label: '⏰ Warranty ending soon',
+    text: 'Heads up, {name}: your tyre warranty ends soon. If anything feels off — vibration, pulling, uneven wear — come in NOW while it\'s still covered. — SNS Tyres' },
+];
+
+document.getElementById('m_template').innerHTML =
+  '<option value="">— pick one —</option>' +
+  MESSAGE_TEMPLATES.map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
+
+function applyTemplate() {
+  const i = document.getElementById('m_template').value;
+  if (i === '') return;
+  const name = document.getElementById('m_name').value.trim();
+  document.getElementById('m_text').value =
+    MESSAGE_TEMPLATES[i].text.replace(/\{name\}/g, name || '{name}');
+}
+
 let messagesCache = [];
 async function loadMessages() {
   const rows = await jsonp('getMessages', {});
@@ -705,11 +750,15 @@ function renderMessages() {
     + '</tbody></table>';
 }
 async function scheduleMessage() {
+  // Any {name} still in the text (template picked before the name was typed)
+  // is resolved now, so the stored message is exactly what will be sent.
+  const name = document.getElementById('m_name').value.trim();
+  const message = document.getElementById('m_text').value.replace(/\{name\}/g, name || 'ji');
   const result = await jsonp('scheduleMessage', {
     customer_phone: document.getElementById('m_phone').value,
-    customer_name: document.getElementById('m_name').value,
+    customer_name: name,
     send_on: document.getElementById('m_send_on').value,
-    message: document.getElementById('m_text').value,
+    message: message,
   });
   if (result.error) { setStatus('status-addmessage', result.error, true); return; }
   setStatus('status-addmessage', result.message_id + ' scheduled.');
