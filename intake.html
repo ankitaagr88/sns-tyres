@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#262B36" />
+<title>SNS Tyres — Intake</title>
+<link rel="icon" href="assets/ai4work-mark.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #262B36;
+    --charcoal-2: #3D4453;
+    --coral: #E0495F;
+    --coral-dark: #B93548;
+    --coral-tint: #FBEAEC;
+    --gold: #F0B93E;
+    --bg: #F7F5F3;
+    --surface: #FFFFFF;
+    --ink: #23262B;
+    --gray: #6B7280;
+    --border: #E7E3DD;
+    --success: #1E7A46;
+    --error: #B00020;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    max-width: 520px; margin: 0 auto; color: var(--ink); background: var(--bg);
+    padding: 0 0 calc(24px + env(safe-area-inset-bottom));
+  }
+  .brand-header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--charcoal); padding: 12px 16px calc(12px + env(safe-area-inset-top));
+    margin-bottom: 14px; display: flex; align-items: baseline; gap: 10px;
+  }
+  .brand-header .wordmark { font-size: 19px; font-weight: 800; letter-spacing: 0.4px; }
+  .brand-header .wordmark .sns { color: var(--coral); }
+  .brand-header .wordmark .tyres { color: var(--gold); }
+  .brand-header .subtitle { color: #C4C9D4; font-size: 13px; font-weight: 600; margin-left: auto; letter-spacing: 0.2px; }
+
+  .content { padding: 0 14px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 14px; box-shadow: 0 1px 3px rgba(38,43,54,0.06);
+  }
+
+  /* Groups the form so the tyre's identity reads as its own step, separate
+     from the details that follow it. */
+  .fieldset-title {
+    display: flex; align-items: center; gap: 8px;
+    margin: 22px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--coral-dark);
+  }
+  .fieldset-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .fieldset-title:first-child { margin-top: 0; }
+
+  label { display: block; margin-top: 15px; font-size: 12px; font-weight: 700; color: var(--charcoal-2); text-transform: uppercase; letter-spacing: 0.3px; }
+  label:first-child { margin-top: 0; }
+  /* 16px keeps mobile browsers from auto-zooming on focus; 46px min-height
+     keeps every field a comfortable one-thumb target. */
+  input, select {
+    width: 100%; min-height: 46px; padding: 11px 12px; font-size: 16px; margin-top: 6px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-color: var(--coral); box-shadow: 0 0 0 3px rgba(224,73,95,0.15); }
+
+  button {
+    margin-top: 20px; width: 100%; min-height: 50px; padding: 14px;
+    background: var(--coral-dark); color: white;
+    border: none; border-radius: 11px; font-size: 16px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:active { background: var(--coral); }
+
+  .note {
+    margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--charcoal-2);
+    background: #FDF6E7; border: 1px solid #F0DFB5; border-radius: 8px; padding: 8px 10px;
+  }
+  .scan-row { display: flex; gap: 8px; align-items: flex-start; }
+  .scan-row input { flex: 1; min-width: 0; }
+  .scan-btn {
+    margin-top: 6px; width: auto; flex: 0 0 auto; min-height: 46px; padding: 10px 18px;
+    background: var(--charcoal); font-size: 15px; border-radius: 9px;
+  }
+  #intakeResult { margin-top: 20px; text-align: center; display: none; }
+  #intakeResult strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #intakeResult .hint { font-size: 12px; color: var(--gray); line-height: 1.45; }
+  .status { margin-top: 12px; font-size: 14px; padding: 10px 12px; border-radius: 8px; background: #EAF4EE; color: var(--success); }
+  .status:empty { display: none; padding: 0; }
+  .status.error { background: var(--coral-tint); color: var(--error); }
+
+  .app-footer { text-align: center; font-size: 11px; color: var(--gray); margin-top: 24px; padding: 0 60px 16px; }
+  .app-footer img { height: 12px; vertical-align: middle; margin-left: 4px; opacity: 0.8; }
+
+  /* Always-visible credit — fixed to the viewport, so it shows no matter
+     how far the page scrolls. */
+  .ai4work-fixed {
+    position: fixed; bottom: 10px; right: 10px; z-index: 999;
+    background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; box-shadow: 0 2px 8px rgba(38,43,54,0.12);
+    font-family: 'Sora', sans-serif; font-size: 12px; pointer-events: none;
+  }
+  .ai4work-fixed span { opacity: 0.55; }
+  .ai4work-fixed .ai4work-ai { font-weight: 800; color: #141414; }
+  .ai4work-fixed .ai4work-4 { font-weight: 800; color: oklch(0.72 0.2 132); }
+  .ai4work-fixed .ai4work-work { font-weight: 400; color: #9a9a9a; }
+</style>
+</head>
+<body>
+  <div class="brand-header">
+    <div class="wordmark"><span class="sns">SNS</span><span class="tyres">TYRES</span></div>
+    <div class="subtitle">Tyre Intake</div>
+  </div>
+
+  <div class="content">
+  <div class="card">
+
+  <div class="fieldset-title">Tyre Code</div>
+  <div class="note">
+    This is the tyre's ID. Scan the barcode printed on the tyre — or type the
+    serial if it won't scan.
+  </div>
+  <div class="scan-row">
+    <input id="tyre_id" placeholder="Scan or type the code" />
+    <button type="button" class="scan-btn" id="scanBtn-intake">Scan</button>
+  </div>
+  <div id="scanMount-intake"></div>
+
+  <div class="fieldset-title">Tyre Details</div>
+  <label>Brand</label>
+  <select id="brand">
+    <option>MRF</option><option>CEAT</option><option>Apollo</option>
+    <option>JK Tyre</option><option>Bridgestone</option><option>Yokohama</option>
+    <option>Goodyear</option><option>Continental</option><option>Hankook</option>
+    <option>Michelin</option><option>Pirelli</option><option>Vredestein</option>
+    <option>BKT</option><option>Arivo</option><option>Sailun</option>
+    <option>Greenlander</option>
+  </select>
+
+  <label>Category</label>
+  <select id="category">
+    <option value="2W">2 Wheeler</option>
+    <option value="4W">4 Wheeler</option>
+    <option value="Truck">Truck</option>
+    <option value="Bus">Bus</option>
+    <option value="Radial">Radial</option>
+    <option value="LCV">LCV</option>
+    <option value="SCV">SCV</option>
+    <option value="OTR">OTR</option>
+  </select>
+
+  <label>Ply Rating / Load Index</label>
+  <input id="ply_rating" list="plyRatings" placeholder="e.g. 8PR or 95H" />
+  <datalist id="plyRatings">
+    <option value="4PR"></option><option value="6PR"></option>
+    <option value="8PR"></option><option value="10PR"></option>
+    <option value="12PR"></option><option value="14PR"></option>
+    <option value="16PR"></option><option value="18PR"></option>
+    <option value="20PR"></option>
+  </datalist>
+
+  <label>Pattern</label>
+  <input id="pattern" placeholder="e.g. ZLX" />
+
+  <label>Size</label>
+  <input id="size" placeholder="e.g. 165/80 R14" />
+
+  <label>DOT / Batch Code (if visible)</label>
+  <input id="dot_code" />
+
+  <div class="fieldset-title">Pricing</div>
+  <label>Cost Price</label>
+  <input id="cost_price" type="number" inputmode="decimal" />
+
+  <label>MRP</label>
+  <input id="mrp" type="number" inputmode="decimal" />
+
+  <label>Selling Price</label>
+  <input id="selling_price" type="number" inputmode="decimal" />
+
+  <label>Branch</label>
+  <input id="branch" value="Main" />
+
+  <button id="submitBtn" onclick="submitIntake()">Add to Inventory</button>
+
+  <div id="intakeResult">
+    <p><strong>Added: <span id="tyreIdText"></span></strong></p>
+    <p class="hint">Nothing to print — the tyre already carries its own code.
+      Scan that same code at sale, claim or sub-dealer transfer.</p>
+  </div>
+  <div id="statusMsg" class="status"></div>
+
+  </div>
+  </div>
+
+  <div class="ai4work-fixed">created by <span class="ai4work-ai">ai</span><span class="ai4work-4">4</span><span class="ai4work-work">work</span></div>
+
+<script src="scanner.js"></script>
+<script>
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyH3-Dlh5dI4UnCWpc8Yv1wvCs5H6GuSq-XQ2AWMGEKkSBQ9ci9z1dL57CfiSNkKqVw/exec';
+
+// ---------- Login gate (shared with index.html via localStorage) ----------
+// Intake is part of the Employee Mobile Web App, so it honours the same
+// login. No separate login form here — staff log in on the main app once and
+// this page picks it up; if they aren't logged in, send them there.
+const AUTH_KEY = 'sns_auth';
+function getAuth() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; }
+  catch (e) { return null; }
+}
+if (!getAuth()) {
+  window.location.replace('index.html');
+}
+
+// Shared scanner (scanner.js) — reads the barcode printed on the tyre, with a
+// confirm step so a misread code is never applied silently.
+SNSScanner.attach({
+  buttonId: 'scanBtn-intake',
+  inputId: 'tyre_id',
+  mountId: 'scanMount-intake',
+});
+
+function jsonp(action, params) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now();
+    window[cbName] = (data) => { resolve(data); delete window[cbName]; script.remove(); };
+    const auth = getAuth();
+    const authParams = auth ? { auth_phone: auth.phone, auth_pin: auth.pin } : {};
+    const query = Object.entries({ action, callback: cbName, ...authParams, ...params })
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    const script = document.createElement('script');
+    script.src = `${WEB_APP_URL}?${query}`;
+    script.onerror = () => reject(new Error('Network error'));
+    document.body.appendChild(script);
+  });
+}
+
+async function submitIntake() {
+  const statusEl = document.getElementById('statusMsg');
+  const tyreId = document.getElementById('tyre_id').value.trim();
+
+  // Checked here as well as server-side so staff get the message without a
+  // round trip — without the printed code the tyre has no identifier at all.
+  if (!tyreId) {
+    statusEl.textContent = 'Scan or type the code printed on the tyre — it is this tyre\'s ID.';
+    statusEl.className = 'status error';
+    document.getElementById('tyre_id').focus();
+    return;
+  }
+
+  statusEl.textContent = 'Saving...';
+  statusEl.className = 'status';
+  document.getElementById('intakeResult').style.display = 'none';
+  try {
+    const result = await jsonp('addIntake', {
+      tyre_id: tyreId,
+      brand: document.getElementById('brand').value,
+      category: document.getElementById('category').value,
+      ply_rating: document.getElementById('ply_rating').value,
+      pattern: document.getElementById('pattern').value,
+      size: document.getElementById('size').value,
+      dot_code: document.getElementById('dot_code').value,
+      cost_price: document.getElementById('cost_price').value,
+      mrp: document.getElementById('mrp').value,
+      selling_price: document.getElementById('selling_price').value,
+      branch: document.getElementById('branch').value,
+    });
+    if (result.error) { statusEl.textContent = result.error; statusEl.className = 'status error'; return; }
+
+    document.getElementById('tyreIdText').textContent = result.tyre_id;
+    document.getElementById('intakeResult').style.display = 'block';
+    statusEl.textContent = 'Saved.';
+
+    // Clear the code so the next tyre can't be filed under the last one's ID
+    // by accident — the rest of the form usually repeats across a delivery.
+    document.getElementById('tyre_id').value = '';
+    document.getElementById('dot_code').value = '';
+    document.getElementById('tyre_id').focus();
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.className = 'status error';
+  }
+}
+</script>
+</body>
+</html>

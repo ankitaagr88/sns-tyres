@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SNS Tyres — Admin Dashboard</title>
+<link rel="icon" href="assets/ai4work-mark.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #262B36;
+    --charcoal-2: #3D4453;
+    --coral: #E0495F;
+    --coral-dark: #B93548;
+    --coral-tint: #FBEAEC;
+    --gold: #F0B93E;
+    --gold-tint: #FDF3DE;
+    --bg: #F7F5F3;
+    --surface: #FFFFFF;
+    --ink: #23262B;
+    --gray: #6B7280;
+    --border: #E7E3DD;
+    --success: #1E7A46;
+    --error: #B00020;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink); background: var(--bg);
+  }
+
+  /* ---------- Login (real — phone + PIN against the Staff tab, Admin role required) ---------- */
+  #loginScreen {
+    min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  #loginScreen.open { display: flex; }
+  .login-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px 28px; width: 100%; max-width: 360px; box-shadow: 0 4px 16px rgba(38,43,54,0.08);
+    text-align: center;
+  }
+  .login-card .wordmark { font-size: 26px; font-weight: 800; margin-bottom: 4px; font-family: 'Sora', sans-serif; }
+  .login-card .wordmark .sns { color: var(--coral); }
+  .login-card .wordmark .tyres { color: var(--gold); }
+  .login-card .subtitle { color: var(--gray); font-size: 13px; margin-bottom: 24px; }
+  .login-card label { display: block; text-align: left; font-size: 13px; font-weight: 700; color: var(--charcoal-2); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 14px; }
+  .login-card input { width: 100%; padding: 11px 12px; font-size: 16px; margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; }
+  .login-card input:focus { outline: none; border-color: var(--coral); box-shadow: 0 0 0 3px rgba(224,73,95,0.15); }
+  .login-card button { margin-top: 20px; width: 100%; padding: 13px; background: var(--coral-dark); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
+
+  /* ---------- Dashboard shell ---------- */
+  #dashboard { display: none; min-height: 100vh; }
+  #dashboard.open { display: block; }
+  .topbar {
+    background: var(--charcoal); color: white; display: flex; align-items: center;
+    justify-content: space-between; padding: 14px 24px; position: sticky; top: 0; z-index: 10;
+  }
+  .topbar .wordmark { font-size: 20px; font-weight: 800; font-family: 'Sora', sans-serif; }
+  .topbar .wordmark .sns { color: var(--coral); }
+  .topbar .wordmark .tyres { color: var(--gold); }
+  .topbar .tag { color: #C4C9D4; font-size: 12px; margin-left: 10px; padding-left: 10px; border-left: 1px solid #4A5160; }
+  .topbar .who { font-size: 13px; color: #C4C9D4; }
+  .topbar .who button { margin-left: 12px; background: none; border: 1px solid #4A5160; color: #C4C9D4; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+
+  .shell { display: flex; }
+  .sidebar {
+    width: 210px; background: var(--charcoal-2); min-height: calc(100vh - 57px); flex-shrink: 0;
+    padding: 16px 0; display: flex; flex-direction: column;
+  }
+  .sidebar button {
+    display: block; width: 100%; text-align: left; padding: 11px 20px; background: none; border: none;
+    color: #D7DAE0; font-size: 14px; cursor: pointer; border-left: 3px solid transparent;
+  }
+  .sidebar button:hover { background: rgba(255,255,255,0.05); }
+  .sidebar button.active { background: rgba(255,255,255,0.08); border-left-color: var(--coral); color: white; font-weight: 600; }
+  .sidebar .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8891A0; padding: 16px 20px 6px; }
+  .sidebar .nav-links { flex: 1; }
+
+  .ai4work-fixed {
+    position: fixed; bottom: 10px; right: 10px; z-index: 999;
+    background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; box-shadow: 0 2px 8px rgba(38,43,54,0.12);
+    font-family: 'Sora', sans-serif; font-size: 12px; pointer-events: none;
+  }
+  .ai4work-fixed span { opacity: 0.55; }
+  .ai4work-fixed .ai4work-ai { font-weight: 800; color: #141414; }
+  .ai4work-fixed .ai4work-4 { font-weight: 800; color: oklch(0.72 0.2 132); }
+  .ai4work-fixed .ai4work-work { font-weight: 400; color: #9a9a9a; }
+
+  .main { flex: 1; padding: 24px 28px; max-width: 1200px; }
+  .main h1 { font-size: 20px; margin: 0 0 4px; }
+  .main .page-desc { color: var(--gray); font-size: 13px; margin-bottom: 20px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(38,43,54,0.06); }
+  .card h2 { font-size: 15px; margin: 0 0 14px; color: var(--charcoal-2); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: flex-end; }
+  .row label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--charcoal-2); margin-bottom: 4px; }
+  .row input, .row select { padding: 9px 12px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .row input:focus, .row select:focus { outline: none; border-color: var(--coral); }
+  .row .grow { flex: 1; min-width: 160px; }
+  .row .grow input, .row .grow select { width: 100%; }
+
+  button.btn { padding: 9px 16px; background: var(--coral-dark); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button.btn.secondary { background: var(--coral-tint); color: var(--coral-dark); border: 1px solid var(--coral); }
+  button.btn.ghost { background: none; color: var(--charcoal-2); border: 1px solid var(--border); }
+  button.btn.small { padding: 5px 10px; font-size: 12px; }
+
+  .tableWrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--charcoal-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+  tr:hover td { background: #FBFAF8; }
+  tr.clickable { cursor: pointer; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .badge.ok { background: #E7F5EC; color: var(--success); }
+  .badge.warn { background: var(--gold-tint); color: #8A6D1D; }
+  .badge.bad { background: var(--coral-tint); color: var(--error); }
+  .badge.new { background: #E7EEF9; color: #2D5FA3; }
+  .stat-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { flex: 1; min-width: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat .num { font-size: 26px; font-weight: 800; color: var(--charcoal); }
+  .stat .label { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+  .lowest-price { color: var(--error); font-weight: 700; }
+
+  .status { margin: 10px 0 0; font-size: 13px; padding: 9px 12px; border-radius: 8px; background: #EAF4EE; color: var(--success); }
+  .status:empty { display: none; padding: 0; margin: 0; }
+  .status.error { background: var(--coral-tint); color: var(--error); }
+  .empty-msg { color: var(--gray); font-size: 13px; padding: 14px 4px; }
+
+  /* The dashboard is desk-first by design, but shouldn't fall apart on a
+     phone in a pinch: the sidebar becomes a horizontal scroller. */
+  @media (max-width: 760px) {
+    .shell { flex-direction: column; }
+    .sidebar { width: 100%; min-height: 0; flex-direction: row; overflow-x: auto; padding: 0; }
+    .sidebar .section-label { display: none; }
+    .sidebar .nav-links { display: flex; flex: 0 0 auto; }
+    .sidebar button { white-space: nowrap; border-left: none; border-bottom: 3px solid transparent; }
+    .sidebar button.active { border-bottom-color: var(--coral); }
+    .main { padding: 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===== LOGIN — real (Phase 2.2). Same stored login as the Employee app;
+       this page additionally requires the Admin role. ===== -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="wordmark"><span class="sns">SNS</span><span class="tyres">TYRES</span></div>
+      <div class="subtitle">Admin Dashboard</div>
+      <label>Mobile Number</label>
+      <input id="login_phone" type="tel" inputmode="tel" placeholder="10-digit mobile number" />
+      <label>PIN</label>
+      <input id="login_pin" type="password" inputmode="numeric" placeholder="PIN" />
+      <button onclick="doLogin()">Log In</button>
+      <div id="status-login" class="status"></div>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div id="dashboard">
+    <div class="topbar">
+      <div><span class="wordmark"><span class="sns">SNS</span><span class="tyres">TYRES</span></span><span class="tag">Admin Dashboard</span></div>
+      <div class="who"><span id="whoName"></span><button onclick="doLogout()">Log out</button></div>
+    </div>
+    <div class="shell">
+      <nav class="sidebar">
+        <div class="nav-links">
+          <button class="active" data-page="overview" onclick="showPage('overview')">Overview</button>
+          <div class="section-label">CRM</div>
+          <button data-page="customers" onclick="showPage('customers')">Customers</button>
+          <button data-page="leads" onclick="showPage('leads')">Lead Pipeline</button>
+          <div class="section-label">Operations</div>
+          <button data-page="subdealers" onclick="showPage('subdealers')">Sub-Dealers</button>
+          <button data-page="stock" onclick="showPage('stock')">Stock Summary</button>
+          <div class="section-label">Money</div>
+          <button data-page="purchases" onclick="showPage('purchases')">Purchases</button>
+          <button data-page="payments" onclick="showPage('payments')">Payments</button>
+          <button data-page="export" onclick="showPage('export')">Export</button>
+          <div class="section-label">Team</div>
+          <button data-page="performance" onclick="showPage('performance')">Performance</button>
+          <button data-page="employees" onclick="showPage('employees')">Employee Accounts</button>
+        </div>
+      </nav>
+
+      <main class="main">
+
+        <!-- OVERVIEW -->
+        <div id="page-overview" class="page active">
+          <h1>Overview</h1>
+          <div class="page-desc">Today's picture at a glance. Numbers load live from the sheet.</div>
+          <div class="stat-row">
+            <div class="stat"><div class="num" id="stat_stock">—</div><div class="label">Tyres in stock</div></div>
+            <div class="stat"><div class="num" id="stat_low">—</div><div class="label">Low-stock items</div></div>
+            <div class="stat"><div class="num" id="stat_leads">—</div><div class="label">New leads</div></div>
+            <div class="stat"><div class="num" id="stat_payable">—</div><div class="label">₹ outstanding to vendors</div></div>
+            <div class="stat"><div class="num" id="stat_receivable">—</div><div class="label">₹ owed to SNS</div></div>
+          </div>
+          <div class="card">
+            <h2>Where things live</h2>
+            <div class="page-desc" style="margin:0;">
+              Counter work (Sell, Claim, Prices, Intake) happens in the
+              <strong>Employee Mobile Web App</strong> — this dashboard is for
+              everything behind the counter: customers, leads, buying,
+              payments, staff and reports.
+            </div>
+          </div>
+        </div>
+
+        <!-- CUSTOMERS -->
+        <div id="page-customers" class="page">
+          <h1>Customers</h1>
+          <div class="page-desc">Everyone who has ever bought a tyre, grouped by phone number. Click a row for the full profile.</div>
+          <div class="card">
+            <div class="row">
+              <div class="grow"><label>Search name / phone</label><input id="cust_filter" oninput="renderCustomers()" placeholder="Type to filter" /></div>
+              <button class="btn ghost" onclick="loadCustomers()">Refresh</button>
+            </div>
+            <div class="tableWrap" id="custTableWrap"><div class="empty-msg">Loading…</div></div>
+          </div>
+          <div class="card" id="custProfileCard" style="display:none;">
+            <h2 id="custProfileName"></h2>
+            <div id="custProfileBody"></div>
+          </div>
+        </div>
+
+        <!-- LEADS -->
+        <div id="page-leads" class="page">
+          <h1>Lead Pipeline</h1>
+          <div class="page-desc">Captured at the counter by staff (Employee app → More → New Lead) or added here. Work them until they convert or close.</div>
+          <div class="card">
+            <h2>Add a lead</h2>
+            <div class="row">
+              <div class="grow"><label>Name</label><input id="nl_name" /></div>
+              <div class="grow"><label>Phone</label><input id="nl_phone" /></div>
+              <div><label>Source</label><select id="nl_source"><option>Offline</option><option>Online</option></select></div>
+              <div><label>Interest</label><select id="nl_category"><option value="">—</option><option>2W</option><option>4W</option><option>Truck</option><option>Bus</option><option>Radial</option><option>LCV</option><option>SCV</option><option>OTR</option></select></div>
+              <button class="btn" onclick="addLeadAdmin()">Add Lead</button>
+            </div>
+            <div id="status-addlead" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div><label>Show</label><select id="lead_filter" onchange="renderLeads()"><option value="">All</option><option value="new">New</option><option value="contacted">Contacted</option><option value="converted">Converted</option><option value="lost">Lost</option></select></div>
+              <button class="btn ghost" onclick="loadLeads()">Refresh</button>
+            </div>
+            <div class="tableWrap" id="leadsTableWrap"><div class="empty-msg">Loading…</div></div>
+            <div id="status-leads" class="status"></div>
+          </div>
+        </div>
+
+        <!-- SUB-DEALERS -->
+        <div id="page-subdealers" class="page">
+          <h1>Sub-Dealers</h1>
+          <div class="page-desc">Shops SNS supplies. Stock is moved to them from the Employee app; warranty claims trace back through them automatically.</div>
+          <div class="card">
+            <h2>Add a sub-dealer</h2>
+            <div class="row">
+              <div class="grow"><label>Shop Name</label><input id="sd_name" /></div>
+              <div class="grow"><label>Contact Person</label><input id="sd_contact" /></div>
+              <div><label>Phone</label><input id="sd_phone" /></div>
+              <div class="grow"><label>Address</label><input id="sd_address" /></div>
+              <button class="btn" onclick="addSubDealer()">Add</button>
+            </div>
+            <div id="status-addsd" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="tableWrap" id="sdTableWrap"><div class="empty-msg">Loading…</div></div>
+          </div>
+        </div>
+
+        <!-- STOCK -->
+        <div id="page-stock" class="page">
+          <h1>Stock Summary</h1>
+          <div class="page-desc">In-stock counts by brand / category / ply / size, low stock first, flagged against each item's reorder threshold.</div>
+          <div class="card">
+            <div class="row"><button class="btn ghost" onclick="loadStock()">Refresh</button></div>
+            <div class="tableWrap" id="stockTableWrap"><div class="empty-msg">Loading…</div></div>
+          </div>
+        </div>
+
+        <!-- PURCHASES -->
+        <div id="page-purchases" class="page">
+          <h1>Purchases</h1>
+          <div class="page-desc">Stock bought from vendors (local distributors) or companies (manufacturers directly). Recording a purchase automatically opens a payable in Payments.</div>
+          <div class="card">
+            <h2>Add a vendor</h2>
+            <div class="row">
+              <div class="grow"><label>Name</label><input id="v_name" /></div>
+              <div><label>Type</label><select id="v_type"><option>Vendor</option><option>Company</option></select></div>
+              <div><label>Contact Person</label><input id="v_contact" /></div>
+              <div><label>Phone</label><input id="v_phone" /></div>
+              <button class="btn" onclick="addVendor()">Add Vendor</button>
+            </div>
+            <div id="status-addvendor" class="status"></div>
+          </div>
+          <div class="card">
+            <h2>Record a purchase</h2>
+            <div class="row">
+              <div class="grow"><label>Vendor</label><select id="p_vendor"></select></div>
+              <div><label>Invoice No.</label><input id="p_invoice" /></div>
+              <div><label>Amount (₹)</label><input id="p_amount" type="number" /></div>
+              <div><label>Due Date</label><input id="p_due" type="date" /></div>
+              <button class="btn" onclick="addPurchase()">Record</button>
+            </div>
+            <div id="status-addpurchase" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="row"><button class="btn ghost" onclick="loadPurchases()">Refresh</button></div>
+            <div class="tableWrap" id="purchTableWrap"><div class="empty-msg">Loading…</div></div>
+          </div>
+        </div>
+
+        <!-- PAYMENTS -->
+        <div id="page-payments" class="page">
+          <h1>Payments</h1>
+          <div class="page-desc">Payables = what SNS owes vendors (opened automatically from Purchases). Receivables = what customers / sub-dealers owe SNS on credit.</div>
+          <div class="card">
+            <h2>Record a receivable (credit given)</h2>
+            <div class="row">
+              <div><label>Who owes</label><select id="r_party_type"><option value="sub_dealer">Sub-Dealer</option><option value="customer">Customer</option></select></div>
+              <div class="grow"><label>Sub-dealer ID / customer phone</label><input id="r_party_id" /></div>
+              <div><label>Invoice / reference</label><input id="r_reference" /></div>
+              <div><label>Amount (₹)</label><input id="r_amount" type="number" /></div>
+              <div><label>Due Date</label><input id="r_due" type="date" /></div>
+              <button class="btn" onclick="addReceivable()">Add</button>
+            </div>
+            <div id="status-addreceivable" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div><label>Show</label><select id="pay_filter" onchange="renderPayments()"><option value="">Everything</option><option value="payable">Payables only</option><option value="receivable">Receivables only</option></select></div>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="pay_outstanding" checked onchange="renderPayments()" style="width:auto;min-height:0;" /> outstanding only</label>
+              <button class="btn ghost" onclick="loadPayments()">Refresh</button>
+            </div>
+            <div class="tableWrap" id="payTableWrap"><div class="empty-msg">Loading…</div></div>
+            <div id="status-payments" class="status"></div>
+          </div>
+        </div>
+
+        <!-- EXPORT -->
+        <div id="page-export" class="page">
+          <h1>Export for Accounts</h1>
+          <div class="page-desc">Sales in a date range as CSV, for upload into HisabKitab's import screen. (HisabKitab has no API — this file is the permanent integration; column order to be matched to their template.)</div>
+          <div class="card">
+            <div class="row">
+              <div><label>From</label><input id="export_from" type="date" /></div>
+              <div><label>To</label><input id="export_to" type="date" /></div>
+              <button class="btn" onclick="loadExport()">Generate</button>
+              <button class="btn secondary" id="downloadCsvBtn" style="display:none;" onclick="downloadCsv()">Download CSV</button>
+            </div>
+            <div id="status-export" class="status"></div>
+            <div class="tableWrap" id="exportTableWrap"></div>
+          </div>
+        </div>
+
+        <!-- PERFORMANCE -->
+        <div id="page-performance" class="page">
+          <h1>Employee Performance</h1>
+          <div class="page-desc">Per-employee activity in a date range. Transfers are all-time (moves carry no date of their own). Revenue = selling price of units sold.</div>
+          <div class="card">
+            <div class="row">
+              <div><label>From</label><input id="perf_from" type="date" /></div>
+              <div><label>To</label><input id="perf_to" type="date" /></div>
+              <button class="btn" onclick="loadPerformance()">Run</button>
+            </div>
+            <div class="tableWrap" id="perfTableWrap"><div class="empty-msg">Pick a range and press Run.</div></div>
+          </div>
+        </div>
+
+        <!-- EMPLOYEES -->
+        <div id="page-employees" class="page">
+          <h1>Employee Accounts</h1>
+          <div class="page-desc">Logins for the Employee app and this dashboard. PINs are visible here (Admin only) so a forgotten PIN can be read out or reset.</div>
+          <div class="card">
+            <h2>Add an employee</h2>
+            <div class="row">
+              <div class="grow"><label>Name</label><input id="st_name" /></div>
+              <div><label>Mobile Number</label><input id="st_phone" /></div>
+              <div><label>Role</label><select id="st_role"><option>Employee</option><option>Admin</option></select></div>
+              <div><label>PIN</label><input id="st_pin" /></div>
+              <button class="btn" onclick="addStaff()">Add</button>
+            </div>
+            <div id="status-addstaff" class="status"></div>
+          </div>
+          <div class="card">
+            <div class="tableWrap" id="staffTableWrap"><div class="empty-msg">Loading…</div></div>
+            <div id="status-staff" class="status"></div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <div class="ai4work-fixed">created by <span class="ai4work-ai">ai</span><span class="ai4work-4">4</span><span class="ai4work-work">work</span></div>
+
+<script>
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyH3-Dlh5dI4UnCWpc8Yv1wvCs5H6GuSq-XQ2AWMGEKkSBQ9ci9z1dL57CfiSNkKqVw/exec';
+
+// ---------- Auth ----------
+// Same stored login as the Employee app (one login per device); this page
+// additionally requires the Admin role — enforced again server-side on every
+// Admin action, so a non-admin can't get further than an empty dashboard.
+const AUTH_KEY = 'sns_auth';
+function getAuth() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; }
+  catch (e) { return null; }
+}
+
+function jsonp(action, params, opts) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now() + Math.floor(Math.random() * 1000);
+    window[cbName] = (data) => { resolve(data); delete window[cbName]; script.remove(); };
+    const auth = (opts && opts.skipAuth) ? null : getAuth();
+    const authParams = auth ? { auth_phone: auth.phone, auth_pin: auth.pin } : {};
+    const query = Object.entries({ action, callback: cbName, ...authParams, ...params })
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v ?? '')}`).join('&');
+    const script = document.createElement('script');
+    script.src = `${WEB_APP_URL}?${query}`;
+    script.onerror = () => reject(new Error('Network error'));
+    document.body.appendChild(script);
+  });
+}
+
+function boot() {
+  const auth = getAuth();
+  const isAdmin = auth && auth.role === 'Admin';
+  document.getElementById('loginScreen').classList.toggle('open', !isAdmin);
+  document.getElementById('dashboard').classList.toggle('open', !!isAdmin);
+  if (isAdmin) {
+    document.getElementById('whoName').textContent = auth.name + ' (Admin)';
+    loadOverview();
+  }
+}
+
+async function doLogin() {
+  const el = document.getElementById('status-login');
+  const phone = document.getElementById('login_phone').value.trim();
+  const pin = document.getElementById('login_pin').value.trim();
+  if (!phone || !pin) { el.textContent = 'Enter your mobile number and PIN.'; el.className = 'status error'; return; }
+  el.textContent = 'Checking...'; el.className = 'status';
+  try {
+    const result = await jsonp('login', { phone, pin }, { skipAuth: true });
+    if (result.error) { el.textContent = result.error; el.className = 'status error'; return; }
+    if (result.role !== 'Admin') {
+      el.textContent = 'This login is an Employee account — the dashboard needs an Admin login.';
+      el.className = 'status error';
+      return;
+    }
+    localStorage.setItem(AUTH_KEY, JSON.stringify({ phone, pin, staff_id: result.staff_id, name: result.name, role: result.role }));
+    document.getElementById('login_pin').value = '';
+    el.textContent = '';
+    boot();
+  } catch (err) { el.textContent = 'Error: ' + err.message; el.className = 'status error'; }
+}
+
+function doLogout() {
+  localStorage.removeItem(AUTH_KEY);
+  boot();
+}
+
+// ---------- Navigation ----------
+const PAGE_LOADERS = {
+  overview: loadOverview, customers: loadCustomers, leads: loadLeads,
+  subdealers: loadSubDealers, stock: loadStock, purchases: loadPurchases,
+  payments: loadPayments, performance: null, export: null, employees: loadStaff,
+};
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector(`.sidebar button[data-page="${name}"]`).classList.add('active');
+  if (PAGE_LOADERS[name]) PAGE_LOADERS[name]();
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = n => '₹' + (Number(n) || 0).toLocaleString('en-IN');
+const dmy = d => d ? new Date(d).toLocaleDateString() : '';
+function setStatus(id, msg, isError) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'status' + (isError ? ' error' : '');
+}
+
+// ---------- Overview ----------
+async function loadOverview() {
+  try {
+    const [inv, stock, leads, payments] = await Promise.all([
+      jsonp('getInventoryStatus', {}),
+      jsonp('getStockSummary', {}),
+      jsonp('getLeads', {}),
+      jsonp('getPayments', { outstanding_only: 'true' }),
+    ]);
+    if (!inv.error) document.getElementById('stat_stock').textContent = inv.filter(r => r.status === 'in_stock').length;
+    if (!stock.error) document.getElementById('stat_low').textContent = stock.filter(r => r.low_stock).length;
+    if (!leads.error) document.getElementById('stat_leads').textContent = leads.filter(l => l.status === 'new').length;
+    if (!payments.error) {
+      const sum = (type) => payments.filter(r => r.type === type)
+        .reduce((a, r) => a + (Number(r.outstanding_amount) || 0), 0);
+      document.getElementById('stat_payable').textContent = money(sum('payable'));
+      document.getElementById('stat_receivable').textContent = money(sum('receivable'));
+    }
+  } catch (e) { /* stats stay as em-dashes on failure */ }
+}
+
+// ---------- Customers ----------
+let customersCache = [];
+async function loadCustomers() {
+  const rows = await jsonp('getAllCustomers', {});
+  if (rows.error) { document.getElementById('custTableWrap').innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  customersCache = rows;
+  renderCustomers();
+}
+function renderCustomers() {
+  const q = (document.getElementById('cust_filter').value || '').toLowerCase();
+  const rows = customersCache.filter(c =>
+    String(c.customer_name || '').toLowerCase().includes(q) ||
+    String(c.customer_phone || '').includes(q));
+  const wrap = document.getElementById('custTableWrap');
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No customers yet — they appear here after their first sale.</div>'; return; }
+  let html = '<table><thead><tr><th>Customer</th><th>Phone</th><th>Tyres Bought</th><th>Vehicles</th><th>Last Purchase</th></tr></thead><tbody>';
+  rows.forEach(c => {
+    html += `<tr class="clickable" onclick="openCustomer('${esc(c.customer_phone)}')">`
+          + `<td><strong>${esc(c.customer_name)}</strong></td><td>${esc(c.customer_phone)}</td>`
+          + `<td>${c.tyres_bought}</td><td>${esc((c.vehicles || []).join(', '))}</td>`
+          + `<td>${dmy(c.last_purchase)}</td></tr>`;
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+}
+async function openCustomer(phone) {
+  const card = document.getElementById('custProfileCard');
+  const body = document.getElementById('custProfileBody');
+  card.style.display = 'block';
+  document.getElementById('custProfileName').textContent = 'Loading…';
+  body.innerHTML = '';
+  const p = await jsonp('getCustomerProfile', { customer_phone: phone });
+  if (p.error) { document.getElementById('custProfileName').textContent = p.error; return; }
+  document.getElementById('custProfileName').textContent = p.customer_name + ' — ' + p.customer_phone;
+  let html = '<div class="row" style="margin-bottom:6px;">'
+    + (p.customer_address ? `<div><label>Address</label>${esc(p.customer_address)}</div>` : '')
+    + (p.customer_office_address ? `<div><label>Office</label>${esc(p.customer_office_address)}</div>` : '')
+    + (p.customer_dob ? `<div><label>Date of Birth</label>${dmy(p.customer_dob)}</div>` : '')
+    + `<div><label>Anniversary anchor</label>${dmy(p.first_purchase_date)}</div>`
+    + '</div>';
+  if (p.vehicles.length) {
+    html += '<h2 style="margin-top:14px;">Vehicles</h2><div class="tableWrap"><table><thead><tr><th>Number</th><th>Vehicle</th><th>Model</th></tr></thead><tbody>'
+      + p.vehicles.map(v => `<tr><td>${esc(v.vehicle_number)}</td><td>${esc(v.vehicle_name)}</td><td>${esc(v.car_model)}</td></tr>`).join('')
+      + '</tbody></table></div>';
+  }
+  html += '<h2 style="margin-top:14px;">Tyres purchased</h2><div class="tableWrap"><table><thead><tr><th>Date</th><th>Tyre</th><th>Code</th><th>Price</th><th>Invoice</th><th>Warranty Till</th><th>Via</th></tr></thead><tbody>'
+    + p.purchases.map(x =>
+      `<tr><td>${dmy(x.sale_date)}</td><td>${esc(x.brand)} ${esc(x.pattern)} ${esc(x.size)}${x.ply_rating ? ' (' + esc(x.ply_rating) + ')' : ''}</td>`
+      + `<td>${esc(x.tyre_id)}</td><td>${x.price ? money(x.price) : ''}</td><td>${esc(x.invoice_no)}</td>`
+      + `<td>${dmy(x.warranty_expiry_date)}</td><td>${esc(x.sold_via_sub_dealer_id) || 'Direct'}</td></tr>`).join('')
+    + '</tbody></table></div>';
+  body.innerHTML = html;
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ---------- Leads ----------
+let leadsCache = [];
+const LEAD_BADGE = { new: 'new', contacted: 'warn', converted: 'ok', lost: 'bad' };
+async function loadLeads() {
+  const rows = await jsonp('getLeads', {});
+  if (rows.error) { document.getElementById('leadsTableWrap').innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  leadsCache = rows;
+  renderLeads();
+}
+function renderLeads() {
+  const f = document.getElementById('lead_filter').value;
+  const rows = f ? leadsCache.filter(l => l.status === f) : leadsCache;
+  const wrap = document.getElementById('leadsTableWrap');
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No leads' + (f ? ' with status "' + f + '"' : '') + '.</div>'; return; }
+  let html = '<table><thead><tr><th>When</th><th>Name</th><th>Phone</th><th>Source</th><th>Interest</th><th>Notes</th><th>Status</th><th>Update</th></tr></thead><tbody>';
+  rows.forEach(l => {
+    html += `<tr><td>${dmy(l.created_date)}</td><td><strong>${esc(l.name)}</strong></td><td>${esc(l.phone)}</td>`
+      + `<td>${esc(l.source)}</td><td>${esc(l.category_interest)}</td><td>${esc(l.notes)}</td>`
+      + `<td><span class="badge ${LEAD_BADGE[l.status] || 'new'}">${esc(l.status)}</span></td>`
+      + `<td><select id="ls_${esc(l.lead_id)}">`
+      + ['new', 'contacted', 'converted', 'lost'].map(s => `<option${s === l.status ? ' selected' : ''}>${s}</option>`).join('')
+      + `</select> <button class="btn small ghost" onclick="setLeadStatus('${esc(l.lead_id)}')">Save</button></td></tr>`;
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+}
+async function setLeadStatus(leadId) {
+  const status = document.getElementById('ls_' + leadId).value;
+  const result = await jsonp('updateLeadStatus', { lead_id: leadId, status });
+  if (result.error) { setStatus('status-leads', result.error, true); return; }
+  setStatus('status-leads', leadId + ' → ' + status);
+  loadLeads();
+}
+async function addLeadAdmin() {
+  const result = await jsonp('addLead', {
+    name: document.getElementById('nl_name').value,
+    phone: document.getElementById('nl_phone').value,
+    source: document.getElementById('nl_source').value,
+    category_interest: document.getElementById('nl_category').value,
+  });
+  if (result.error) { setStatus('status-addlead', result.error, true); return; }
+  setStatus('status-addlead', 'Lead ' + result.lead_id + ' added.');
+  ['nl_name', 'nl_phone'].forEach(id => document.getElementById(id).value = '');
+  loadLeads();
+}
+
+// ---------- Sub-Dealers ----------
+async function loadSubDealers() {
+  const rows = await jsonp('getSubDealers', {});
+  const wrap = document.getElementById('sdTableWrap');
+  if (rows.error) { wrap.innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No sub-dealers yet.</div>'; return; }
+  wrap.innerHTML = '<table><thead><tr><th>ID</th><th>Shop</th><th>Contact</th><th>Phone</th><th>Address</th></tr></thead><tbody>'
+    + rows.map(r => `<tr><td>${esc(r.sub_dealer_id)}</td><td><strong>${esc(r.name)}</strong></td><td>${esc(r.contact_person)}</td><td>${esc(r.phone)}</td><td>${esc(r.address)}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+async function addSubDealer() {
+  const result = await jsonp('addSubDealer', {
+    name: document.getElementById('sd_name').value,
+    contact_person: document.getElementById('sd_contact').value,
+    phone: document.getElementById('sd_phone').value,
+    address: document.getElementById('sd_address').value,
+  });
+  if (result.error) { setStatus('status-addsd', result.error, true); return; }
+  setStatus('status-addsd', 'Added ' + result.sub_dealer_id + '.');
+  ['sd_name', 'sd_contact', 'sd_phone', 'sd_address'].forEach(id => document.getElementById(id).value = '');
+  loadSubDealers();
+}
+
+// ---------- Stock ----------
+async function loadStock() {
+  const wrap = document.getElementById('stockTableWrap');
+  wrap.innerHTML = '<div class="empty-msg">Loading…</div>';
+  const rows = await jsonp('getStockSummary', {});
+  if (rows.error) { wrap.innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No stock recorded yet.</div>'; return; }
+  rows.sort((a, b) => (b.low_stock ? 1 : 0) - (a.low_stock ? 1 : 0));
+  wrap.innerHTML = '<table><thead><tr><th>Brand</th><th>Category</th><th>Ply</th><th>Size</th><th>In Stock</th><th>Threshold</th><th>Status</th></tr></thead><tbody>'
+    + rows.map(r => `<tr${r.low_stock ? ' style="background:#FBEAEC;"' : ''}><td><strong>${esc(r.brand)}</strong></td><td>${esc(r.category)}</td><td>${esc(r.ply_rating)}</td><td>${esc(r.size)}</td><td>${r.count}</td><td>${r.threshold || ''}</td><td><span class="badge ${r.low_stock ? 'bad' : 'ok'}">${r.low_stock ? 'Low Stock' : 'OK'}</span></td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+// ---------- Purchases ----------
+async function loadPurchases() {
+  const [vendors, purchases] = await Promise.all([jsonp('getVendors', {}), jsonp('getPurchases', {})]);
+  if (!vendors.error) {
+    document.getElementById('p_vendor').innerHTML =
+      '<option value="">Select…</option>' +
+      vendors.map(v => `<option value="${esc(v.vendor_id)}">${esc(v.name)} (${esc(v.vendor_id)})</option>`).join('');
+  }
+  const wrap = document.getElementById('purchTableWrap');
+  if (purchases.error) { wrap.innerHTML = '<div class="empty-msg">' + esc(purchases.error) + '</div>'; return; }
+  if (!purchases.length) { wrap.innerHTML = '<div class="empty-msg">No purchases recorded yet.</div>'; return; }
+  const vName = {};
+  (vendors.error ? [] : vendors).forEach(v => vName[v.vendor_id] = v.name);
+  wrap.innerHTML = '<table><thead><tr><th>ID</th><th>Date</th><th>Vendor</th><th>Invoice</th><th>Amount</th><th>Payment</th></tr></thead><tbody>'
+    + purchases.map(r => `<tr><td>${esc(r.purchase_id)}</td><td>${dmy(r.purchase_date)}</td><td><strong>${esc(vName[r.vendor_id] || r.vendor_id)}</strong></td><td>${esc(r.invoice_no)}</td><td>${money(r.amount)}</td><td><span class="badge ${r.payment_status === 'paid' ? 'ok' : 'warn'}">${esc(r.payment_status)}</span></td></tr>`).join('')
+    + '</tbody></table>';
+}
+async function addVendor() {
+  const result = await jsonp('addVendor', {
+    name: document.getElementById('v_name').value,
+    type: document.getElementById('v_type').value,
+    contact_person: document.getElementById('v_contact').value,
+    phone: document.getElementById('v_phone').value,
+  });
+  if (result.error) { setStatus('status-addvendor', result.error, true); return; }
+  setStatus('status-addvendor', 'Vendor ' + result.vendor_id + ' added.');
+  ['v_name', 'v_contact', 'v_phone'].forEach(id => document.getElementById(id).value = '');
+  loadPurchases();
+}
+async function addPurchase() {
+  const result = await jsonp('addPurchase', {
+    vendor_id: document.getElementById('p_vendor').value,
+    invoice_no: document.getElementById('p_invoice').value,
+    amount: document.getElementById('p_amount').value,
+    due_date: document.getElementById('p_due').value,
+  });
+  if (result.error) { setStatus('status-addpurchase', result.error, true); return; }
+  setStatus('status-addpurchase', 'Purchase ' + result.purchase_id + ' recorded — payable ' + result.payment_id + ' opened in Payments.');
+  ['p_invoice', 'p_amount'].forEach(id => document.getElementById(id).value = '');
+  loadPurchases();
+}
+
+// ---------- Payments ----------
+let paymentsCache = [];
+async function loadPayments() {
+  const rows = await jsonp('getPayments', {});
+  if (rows.error) { document.getElementById('payTableWrap').innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  paymentsCache = rows;
+  renderPayments();
+}
+function renderPayments() {
+  const type = document.getElementById('pay_filter').value;
+  const outstandingOnly = document.getElementById('pay_outstanding').checked;
+  let rows = paymentsCache;
+  if (type) rows = rows.filter(r => r.type === type);
+  if (outstandingOnly) rows = rows.filter(r => r.status !== 'paid');
+  const wrap = document.getElementById('payTableWrap');
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">Nothing here — all settled.</div>'; return; }
+  const badge = { outstanding: 'bad', partial: 'warn', paid: 'ok' };
+  let html = '<table><thead><tr><th>ID</th><th>Type</th><th>Party</th><th>Reference</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Due</th><th>Status</th><th>Record</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const canPay = r.status !== 'paid';
+    html += `<tr><td>${esc(r.payment_id)}</td><td>${r.type === 'payable' ? 'To vendor' : 'Owed to SNS'}</td>`
+      + `<td><strong>${esc(r.party_id)}</strong></td><td>${esc(r.reference)}</td>`
+      + `<td>${money(r.amount)}</td><td>${money(r.paid_amount)}</td><td><strong>${money(r.outstanding_amount)}</strong></td>`
+      + `<td>${dmy(r.due_date)}</td><td><span class="badge ${badge[r.status] || 'warn'}">${esc(r.status)}</span></td>`
+      + `<td>${canPay ? `<input id="pp_${esc(r.payment_id)}" type="number" placeholder="₹" style="width:90px;padding:5px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;"> <button class="btn small" onclick="payRow('${esc(r.payment_id)}')">Save</button>` : ''}</td></tr>`;
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+}
+async function payRow(paymentId) {
+  const amount = document.getElementById('pp_' + paymentId).value;
+  const result = await jsonp('recordPayment', { payment_id: paymentId, amount });
+  if (result.error) { setStatus('status-payments', result.error, true); return; }
+  setStatus('status-payments', paymentId + ': ' + money(result.paid_amount) + ' paid, ' + money(result.outstanding_amount) + ' outstanding (' + result.status + ').');
+  loadPayments();
+}
+async function addReceivable() {
+  const result = await jsonp('addReceivable', {
+    party_type: document.getElementById('r_party_type').value,
+    party_id: document.getElementById('r_party_id').value,
+    reference: document.getElementById('r_reference').value,
+    amount: document.getElementById('r_amount').value,
+    due_date: document.getElementById('r_due').value,
+  });
+  if (result.error) { setStatus('status-addreceivable', result.error, true); return; }
+  setStatus('status-addreceivable', 'Receivable ' + result.payment_id + ' recorded.');
+  ['r_party_id', 'r_reference', 'r_amount'].forEach(id => document.getElementById(id).value = '');
+  loadPayments();
+}
+
+// ---------- Export (moved from the Employee app — Admin work) ----------
+let exportRowsCache = [];
+async function loadExport() {
+  const wrap = document.getElementById('exportTableWrap');
+  document.getElementById('downloadCsvBtn').style.display = 'none';
+  setStatus('status-export', 'Loading…');
+  const result = await jsonp('exportForHisabKitab', {
+    from_date: document.getElementById('export_from').value,
+    to_date: document.getElementById('export_to').value,
+  });
+  if (result.error) { setStatus('status-export', result.error, true); return; }
+  exportRowsCache = result.rows || [];
+  setStatus('status-export', result.count + ' sale(s) found. ' + result.note);
+  wrap.innerHTML = '<table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Amount</th><th>Tyre Code</th></tr></thead><tbody>'
+    + exportRowsCache.map(r => `<tr><td>${dmy(r.date)}</td><td>${esc(r.invoice_no)}</td><td>${esc(r.customer_name)}</td><td>${r.amount ? money(r.amount) : ''}</td><td>${esc(r.tyre_id)}</td></tr>`).join('')
+    + '</tbody></table>';
+  if (exportRowsCache.length) document.getElementById('downloadCsvBtn').style.display = 'inline-block';
+}
+function downloadCsv() {
+  const headers = ['date', 'invoice_no', 'customer_name', 'amount', 'tyre_id'];
+  const lines = [headers.join(',')];
+  exportRowsCache.forEach(r => {
+    lines.push(headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'hisabkitab_export.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Performance ----------
+async function loadPerformance() {
+  const wrap = document.getElementById('perfTableWrap');
+  wrap.innerHTML = '<div class="empty-msg">Loading…</div>';
+  const rows = await jsonp('getEmployeePerformance', {
+    from_date: document.getElementById('perf_from').value,
+    to_date: document.getElementById('perf_to').value,
+  });
+  if (rows.error) { wrap.innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-msg">No activity in this range.</div>'; return; }
+  wrap.innerHTML = '<table><thead><tr><th>Employee</th><th>Sales</th><th>Revenue</th><th>Transfers*</th><th>Claims</th><th>Leads</th><th>Converted</th></tr></thead><tbody>'
+    + rows.map(r => `<tr><td><strong>${esc(r.name)}</strong> <span style="color:var(--gray);font-size:11px;">${esc(r.staff_id)}</span></td>`
+      + `<td>${r.sales_count}</td><td>${money(r.revenue)}</td><td>${r.transfers}</td><td>${r.claims}</td>`
+      + `<td>${r.leads_captured}</td><td>${r.leads_converted}</td></tr>`).join('')
+    + '</tbody></table><div class="empty-msg">* Transfers are counted all-time — sub-dealer moves don\'t carry their own date.</div>';
+}
+
+// ---------- Employee Accounts ----------
+async function loadStaff() {
+  const rows = await jsonp('getStaff', {});
+  const wrap = document.getElementById('staffTableWrap');
+  if (rows.error) { wrap.innerHTML = '<div class="empty-msg">' + esc(rows.error) + '</div>'; return; }
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-msg">No staff yet. The very first Admin must be added directly on the Staff tab in the Google Sheet — after that, manage everyone here.</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Role</th><th>PIN</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  rows.forEach(s => {
+    const active = String(s.active).toLowerCase() !== 'false';
+    html += `<tr><td>${esc(s.staff_id)}</td><td><strong>${esc(s.name)}</strong></td><td>${esc(s.phone)}</td>`
+      + `<td>${esc(s.role)}</td><td>${esc(s.pin)}</td>`
+      + `<td><span class="badge ${active ? 'ok' : 'bad'}">${active ? 'Active' : 'Disabled'}</span></td>`
+      + `<td><input id="np_${esc(s.staff_id)}" placeholder="New PIN" style="width:80px;padding:5px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;">`
+      + ` <button class="btn small ghost" onclick="resetPin('${esc(s.staff_id)}')">Reset PIN</button>`
+      + ` <button class="btn small ghost" onclick="toggleActive('${esc(s.staff_id)}', ${active})">${active ? 'Disable' : 'Enable'}</button></td></tr>`;
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+}
+async function addStaff() {
+  const result = await jsonp('addStaff', {
+    name: document.getElementById('st_name').value,
+    phone: document.getElementById('st_phone').value,
+    role: document.getElementById('st_role').value,
+    pin: document.getElementById('st_pin').value,
+  });
+  if (result.error) { setStatus('status-addstaff', result.error, true); return; }
+  setStatus('status-addstaff', 'Added ' + result.staff_id + '.');
+  ['st_name', 'st_phone', 'st_pin'].forEach(id => document.getElementById(id).value = '');
+  loadStaff();
+}
+async function resetPin(staffId) {
+  const newPin = document.getElementById('np_' + staffId).value.trim();
+  if (!newPin) { setStatus('status-staff', 'Type the new PIN first.', true); return; }
+  const result = await jsonp('updateStaffPin', { staff_id: staffId, new_pin: newPin });
+  if (result.error) { setStatus('status-staff', result.error, true); return; }
+  setStatus('status-staff', 'PIN updated for ' + staffId + '.');
+  loadStaff();
+}
+async function toggleActive(staffId, currentlyActive) {
+  const result = await jsonp('setStaffActive', { staff_id: staffId, active: String(!currentlyActive) });
+  if (result.error) { setStatus('status-staff', result.error, true); return; }
+  setStatus('status-staff', staffId + (result.active ? ' enabled.' : ' disabled.'));
+  loadStaff();
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#262B36" />
+<title>SNS Tyres</title>
+<link rel="icon" href="assets/ai4work-mark.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #262B36;
+    --charcoal-2: #3D4453;
+    --coral: #E0495F;
+    --coral-dark: #B93548;
+    --coral-tint: #FBEAEC;
+    --gold: #F0B93E;
+    --gold-dark: #8A6D1D;
+    --gold-tint: #FDF3DE;
+    --bg: #F7F5F3;
+    --surface: #FFFFFF;
+    --ink: #23262B;
+    --gray: #6B7280;
+    --border: #E7E3DD;
+    --success: #1E7A46;
+    --error: #B00020;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    max-width: 520px; margin: 0 auto; color: var(--ink); background: var(--bg);
+    /* Clear the fixed bottom nav, plus the home-indicator area on gesture-nav phones. */
+    padding: 0 0 calc(76px + env(safe-area-inset-bottom));
+  }
+
+  /* Header is sticky so staff always see which screen they're on — with nine
+     screens and one-handed use, losing your place is the easiest mistake. */
+  .brand-header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--charcoal); padding: 12px 16px calc(12px + env(safe-area-inset-top));
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .brand-header .wordmark { font-size: 19px; font-weight: 800; letter-spacing: 0.4px; flex: 0 0 auto; }
+  .brand-header .wordmark .sns { color: var(--coral); }
+  .brand-header .wordmark .tyres { color: var(--gold); }
+  .brand-header .screen-name {
+    color: #C4C9D4; font-size: 13px; font-weight: 600; letter-spacing: 0.2px;
+    margin-left: auto; text-align: right;
+  }
+
+  .content { padding: 14px 14px 0; }
+
+  .panel { display: none; }
+  .panel.active {
+    display: block; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 14px; box-shadow: 0 1px 3px rgba(38,43,54,0.06);
+  }
+
+  /* Groups a long form into labelled chunks. The Sell screen has a dozen
+     fields; unbroken, it reads as an intimidating wall on a phone. */
+  .fieldset-title {
+    display: flex; align-items: center; gap: 8px;
+    margin: 22px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--coral-dark);
+  }
+  .fieldset-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .fieldset-title:first-child { margin-top: 0; }
+
+  /* ---- Bottom navigation ----
+     Replaces a nine-item horizontally-scrolling pill strip, where anything
+     past the fourth tab was off-screen and easy to never discover. The three
+     counter-critical actions sit here permanently; the rest live behind More. */
+  .bottomnav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+    max-width: 520px; margin: 0 auto;
+    display: flex; background: var(--surface); border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -2px 12px rgba(38,43,54,0.08);
+  }
+  .navbtn {
+    flex: 1; min-height: 58px; padding: 7px 2px 9px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    background: none; border: 0; cursor: pointer; color: var(--gray);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.2px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .navbtn svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .navbtn.active { color: var(--coral-dark); }
+  .navbtn.active svg { stroke-width: 2.3; }
+
+  /* ---- "More" sheet ---- */
+  .sheet-backdrop {
+    position: fixed; inset: 0; z-index: 70; background: rgba(38,43,54,0.45);
+    opacity: 0; pointer-events: none; transition: opacity 0.18s;
+  }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 80;
+    max-width: 520px; margin: 0 auto;
+    background: var(--surface); border-radius: 18px 18px 0 0;
+    padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
+    transform: translateY(102%); transition: transform 0.22s ease;
+    max-height: 82vh; overflow-y: auto;
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-grip { width: 40px; height: 4px; border-radius: 999px; background: var(--border); margin: 6px auto 12px; }
+  .sheet h2 { margin: 0 4px 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase; color: var(--gray); }
+  .sheet-item {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    min-height: 52px; padding: 12px 10px; margin: 0;
+    background: none; border: 0; border-radius: 10px; cursor: pointer;
+    font-size: 15px; font-weight: 600; color: var(--ink); text-align: left;
+  }
+  .sheet-item:active { background: var(--bg); }
+  .sheet-item.active { background: var(--coral-tint); color: var(--coral-dark); }
+  .sheet-item svg { width: 20px; height: 20px; flex: 0 0 auto; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+  label { display: block; margin-top: 15px; font-size: 12px; font-weight: 700; color: var(--charcoal-2); text-transform: uppercase; letter-spacing: 0.3px; }
+  label:first-child { margin-top: 0; }
+  /* 16px keeps mobile browsers from auto-zooming the page on focus; the 46px
+     min-height keeps every field a comfortable one-thumb target. */
+  input, select {
+    width: 100%; min-height: 46px; padding: 11px 12px; font-size: 16px; margin-top: 6px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-color: var(--coral); box-shadow: 0 0 0 3px rgba(224,73,95,0.15); }
+
+  button.action {
+    margin-top: 20px; width: 100%; min-height: 50px; padding: 14px;
+    background: var(--coral-dark); color: white;
+    border: none; border-radius: 11px; font-size: 16px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.action:active { background: var(--coral); }
+  button.secondary {
+    margin-top: 10px; width: 100%; min-height: 46px; padding: 12px;
+    background: var(--coral-tint); color: var(--coral-dark);
+    border: 1px solid var(--coral); border-radius: 11px; font-size: 15px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .status { margin-top: 12px; font-size: 14px; padding: 10px 12px; border-radius: 8px; background: #EAF4EE; color: var(--success); }
+  .status:empty { display: none; padding: 0; }
+  .status.error { background: #FBEAEC; color: var(--error); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--border); padding: 8px 6px; text-align: left; }
+  th { color: var(--charcoal-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+  tr:nth-child(even) { background: #FBFAF8; }
+  /* Lowest Price = the floor staff must not go below — marked so it reads as a
+     limit at a glance rather than as just another price. */
+  td.floor-col { color: var(--coral-dark); font-weight: 700; }
+  th.floor-col { color: var(--coral-dark); }
+  .note {
+    margin-top: 10px; font-size: 12px; line-height: 1.45; color: var(--charcoal-2);
+    background: #FDF6E7; border: 1px solid #F0DFB5; border-radius: 8px; padding: 8px 10px;
+  }
+  .empty-msg { margin-top: 14px; font-size: 14px; color: var(--gray); text-align: center; padding: 18px 10px; }
+
+  /* On a phone these tables are 6–8 columns wide. Rather than making staff
+     scroll sideways to compare three prices, each row becomes a card and every
+     cell carries its own label (set as data-label when the row is rendered). */
+  @media (max-width: 560px) {
+    table, tbody, tr, td { display: block; width: 100%; }
+    thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    tr {
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 4px 12px; margin-bottom: 10px; background: var(--surface);
+    }
+    tr:nth-child(even) { background: var(--surface); }
+    td {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+      border-bottom: 1px dashed var(--border); padding: 9px 0; text-align: right;
+    }
+    tr td:last-child { border-bottom: 0; }
+    td::before {
+      content: attr(data-label); flex: 0 0 auto; text-align: left;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+      color: var(--gray);
+    }
+    /* The row's identity line — brand — reads as the card's heading. */
+    td.row-head {
+      font-size: 16px; font-weight: 800; padding: 11px 0 9px;
+      border-bottom: 1px solid var(--border);
+    }
+    td.row-head::before { color: var(--gray); font-size: 11px; }
+    td.floor-col { font-size: 15px; }
+  }
+
+  .trail-box { border: 1px solid var(--border); border-left: 4px solid var(--coral); border-radius: 10px; padding: 12px 14px; margin-top: 14px; font-size: 14px; background: var(--surface); }
+  .trail-box h3 { margin: 10px 0 2px; color: var(--coral-dark); font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .trail-box h3:first-child { margin-top: 0; }
+
+
+  /* Always-visible credit. Now that a fixed bottom nav owns the foot of the
+     screen, this sits inline at the end of the scroll instead of floating
+     over the nav bar. */
+  .ai4work-fixed {
+    display: block; text-align: center; margin: 22px auto 8px; padding: 6px 12px;
+    font-family: 'Sora', sans-serif; font-size: 12px;
+  }
+  .ai4work-fixed span { opacity: 0.55; }
+  .ai4work-fixed .ai4work-ai { font-weight: 800; color: #141414; }
+  .ai4work-fixed .ai4work-4 { font-weight: 800; color: oklch(0.72 0.2 132); }
+  .ai4work-fixed .ai4work-work { font-weight: 400; color: #9a9a9a; }
+
+  /* ---- Login gate (Phase 2.2 — phone + PIN) ---- */
+  #loginScreen {
+    position: fixed; inset: 0; z-index: 200; background: var(--bg);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  #loginScreen.open { display: flex; }
+  .login-card {
+    width: 100%; max-width: 360px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px;
+    box-shadow: 0 4px 16px rgba(38,43,54,0.08);
+  }
+  .login-card .wordmark { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; text-align: center; margin-bottom: 4px; font-family: 'Sora', sans-serif; }
+  .login-card .wordmark .sns { color: var(--coral); }
+  .login-card .wordmark .tyres { color: var(--gold); }
+  .login-card .login-sub { text-align: center; font-size: 13px; color: var(--gray); margin-bottom: 18px; }
+  /* Logged-in identity + logout live at the foot of the More sheet — the
+     header is too tight on a phone to carry them. */
+  .sheet-user {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 10px; padding: 12px 10px 2px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--gray);
+  }
+  .sheet-user .logout-btn {
+    background: var(--bg); border: 1px solid var(--border); color: var(--charcoal-2);
+    border-radius: 999px; font-size: 12px; font-weight: 700; padding: 8px 16px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <!-- Login gate (Phase 2.2). A UI convenience, not a hard security boundary —
+       see CLAUDE.md. Credentials are checked against the Staff tab and kept in
+       localStorage so counter staff aren't re-typing a PIN all day. -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="wordmark"><span class="sns">SNS</span><span class="tyres">TYRES</span></div>
+      <div class="login-sub">Staff login</div>
+      <label>Mobile Number</label>
+      <input id="login_phone" type="tel" inputmode="tel" autocomplete="tel" />
+      <label>PIN</label>
+      <input id="login_pin" type="password" inputmode="numeric" autocomplete="current-password" />
+      <button class="action" onclick="doLogin()">Log In</button>
+      <div id="status-login" class="status"></div>
+    </div>
+  </div>
+
+  <div class="brand-header">
+    <div class="wordmark"><span class="sns">SNS</span><span class="tyres">TYRES</span></div>
+    <div class="screen-name" id="screenName">Sell a Tyre</div>
+  </div>
+
+  <div class="content">
+
+  <!-- SELL TAB -->
+  <div id="panel-sell" class="panel active">
+    <div class="fieldset-title">Tyre</div>
+    <button class="secondary" id="scanBtn-sell" style="margin-top:8px;">Scan Tyre Code</button>
+    <div id="scanMount-sell"></div>
+    <label>Tyre Code</label>
+    <input id="sell_tyre_id" placeholder="Scan or type the code on the tyre" />
+
+    <div class="fieldset-title">Customer</div>
+    <label>Customer Name</label>
+    <input id="sell_customer_name" autocomplete="name" />
+    <label>Customer Phone</label>
+    <input id="sell_customer_phone" type="tel" inputmode="tel" autocomplete="tel" />
+    <label>Customer Address</label>
+    <input id="sell_customer_address" />
+    <label>Office Address</label>
+    <input id="sell_customer_office_address" />
+    <label>Date of Birth</label>
+    <input id="sell_customer_dob" type="date" />
+
+    <div class="fieldset-title">Vehicle</div>
+    <label>Vehicle Number</label>
+    <input id="sell_vehicle_number" autocapitalize="characters" />
+    <label>Vehicle Name (maker, e.g. Kia)</label>
+    <input id="sell_vehicle_name" />
+    <label>Car Model (e.g. Sonet)</label>
+    <input id="sell_car_model" />
+    <label>Current KM</label>
+    <input id="sell_current_km" type="number" inputmode="numeric" />
+
+    <div class="fieldset-title">Sale</div>
+    <label>Source / Referral</label>
+    <input id="sell_source_referral" />
+    <label>Invoice No.</label>
+    <input id="sell_invoice_no" />
+    <label>Branch</label>
+    <input id="sell_branch" value="Main" />
+    <label>Sold via Sub-Dealer? (leave blank if direct sale)</label>
+    <input id="sell_sub_dealer_id" placeholder="e.g. SD-001" />
+    <button class="action" onclick="submitSale()">Record Sale</button>
+    <div id="status-sell" class="status"></div>
+    <div id="jkPrefillWrap" style="display:none; margin-top:10px;">
+      <button class="secondary" onclick="sendJkPrefillLink()">Send JK Registration Link to Customer (WhatsApp)</button>
+    </div>
+    <div id="portalSummaryWrap" style="display:none; margin-top:10px;">
+      <button class="secondary" onclick="showPortalSummary()">Show Portal Registration Details (Copy to App)</button>
+      <div id="portalSummaryBox" class="trail-box" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- CLAIM TAB -->
+  <div id="panel-claim" class="panel">
+    <button class="secondary" id="scanBtn-claim">Scan Tyre Code</button>
+    <div id="scanMount-claim"></div>
+    <label>Tyre Code</label>
+    <input id="claim_tyre_id" placeholder="Scan or type the code on the tyre" />
+    <button class="action" onclick="lookupTrail()">Look Up Trail</button>
+    <div id="trailResult"></div>
+
+    <div id="otpSection" style="display:none; margin-top:16px;">
+      <button class="secondary" onclick="generateOtp()">Generate OTP</button>
+      <div id="otpDisplay" class="status"></div>
+      <label>Enter OTP customer confirms (relay via call/WhatsApp)</label>
+      <input id="otp_input" />
+      <button class="action" onclick="verifyOtp()">Verify OTP</button>
+      <div id="otpVerifyStatus" class="status"></div>
+    </div>
+    <div id="status-claim" class="status"></div>
+  </div>
+
+  <!-- PRICE LIST TAB -->
+  <div id="panel-price" class="panel">
+    <label>Filter by Brand</label>
+    <input id="price_filter" placeholder="Type to filter, e.g. MRF" oninput="renderPriceList()" />
+    <div class="note">Quote <strong>Negotiable</strong> first, then come down if you must.
+      <strong>Lowest Price</strong> is the floor — never go below it, and keep this screen
+      turned away from the customer.</div>
+    <div id="priceTableWrap"></div>
+  </div>
+
+  <!-- SUB-DEALER TAB -->
+  <div id="panel-subdealer" class="panel">
+    <button class="secondary" id="scanBtn-subdealer">Scan Tyre Code</button>
+    <div id="scanMount-subdealer"></div>
+    <label>Tyre Code</label>
+    <input id="sd_tyre_id" placeholder="Scan or type the code on the tyre" />
+    <label>Sub-Dealer ID</label>
+    <input id="sd_sub_dealer_id" placeholder="e.g. SD-001" />
+    <button class="action" onclick="moveToSubDealer()">Move Stock to Sub-Dealer</button>
+    <div id="status-subdealer" class="status"></div>
+  </div>
+
+  <!-- NEW LEAD TAB (Phase 2.3 — capture only; the pipeline lives in the
+       Admin Dashboard) -->
+  <div id="panel-lead" class="panel">
+    <div class="note">Someone asked about tyres but didn't buy? Save them here
+      so they can be followed up.</div>
+    <label>Name</label>
+    <input id="lead_name" />
+    <label>Phone</label>
+    <input id="lead_phone" type="tel" inputmode="tel" />
+    <label>How did they come?</label>
+    <select id="lead_source">
+      <option value="Offline">Walk-in / Offline</option>
+      <option value="Online">Online / Phone</option>
+    </select>
+    <label>Interested In</label>
+    <select id="lead_category">
+      <option value="">Not sure</option>
+      <option value="2W">2 Wheeler</option><option value="4W">4 Wheeler</option>
+      <option value="Truck">Truck</option><option value="Bus">Bus</option>
+      <option value="Radial">Radial</option><option value="LCV">LCV</option>
+      <option value="SCV">SCV</option><option value="OTR">OTR</option>
+    </select>
+    <label>Notes (tyre size, budget, when they'll decide...)</label>
+    <input id="lead_notes" />
+    <button class="action" onclick="submitLead()">Save Lead</button>
+    <div id="status-lead" class="status"></div>
+  </div>
+
+  <!-- ANNIVERSARIES TAB -->
+  <div id="panel-anniversaries" class="panel">
+    <label>Show anniversaries in the next N days</label>
+    <input id="anniv_days" type="number" value="7" oninput="loadAnniversaries()" />
+    <div id="annivTableWrap"></div>
+  </div>
+
+  <!-- SERVICES TAB -->
+  <div id="panel-services" class="panel">
+    <label>Service</label>
+    <select id="service_name" onchange="fillServicePrice()">
+      <option value="">Select a service...</option>
+    </select>
+    <label>Price</label>
+    <input id="service_price" readonly placeholder="Select a service to see the price" />
+  </div>
+
+  </div>
+
+  <div class="ai4work-fixed">created by <span class="ai4work-ai">ai</span><span class="ai4work-4">4</span><span class="ai4work-work">work</span></div>
+
+  <!-- Bottom nav: the three screens counter staff use all day, plus More.
+       Everything else is one tap away in the sheet below. -->
+  <nav class="bottomnav">
+    <button class="navbtn active" data-tab="sell" onclick="showTab('sell')">
+      <svg viewBox="0 0 24 24"><path d="M3 6h2l2 11h11l2-8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
+      Sell
+    </button>
+    <button class="navbtn" data-tab="price" onclick="showTab('price')">
+      <svg viewBox="0 0 24 24"><path d="M20.6 13.4 12 22l-8.6-8.6a4.5 4.5 0 0 1-1.3-3.2V4a2 2 0 0 1 2-2h6.2a4.5 4.5 0 0 1 3.2 1.3l7.1 7.1a2 2 0 0 1 0 2.9Z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>
+      Prices
+    </button>
+    <button class="navbtn" data-tab="claim" onclick="showTab('claim')">
+      <svg viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.4c0 4.4-3.1 8.5-7.5 9.6-4.4-1.1-7.5-5.2-7.5-9.6V6Z"/><path d="m9.2 12 1.9 1.9 3.7-3.8"/></svg>
+      Claim
+    </button>
+    <button class="navbtn" id="moreBtn" onclick="openSheet()">
+      <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+      More
+    </button>
+  </nav>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="More screens">
+    <div class="sheet-grip"></div>
+    <h2>More</h2>
+    <button class="sheet-item" data-tab="subdealer" onclick="showTab('subdealer')">
+      <svg viewBox="0 0 24 24"><path d="M3 7h10v8H3z"/><path d="M13 10h4l4 3v2h-8z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+      Move to Sub-Dealer
+    </button>
+    <button class="sheet-item" data-tab="lead" onclick="showTab('lead')">
+      <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3.2"/><path d="M18 8h4M20 6v4"/></svg>
+      New Lead
+    </button>
+    <button class="sheet-item" data-tab="services" onclick="showTab('services')">
+      <svg viewBox="0 0 24 24"><path d="M14.7 6.3a3.9 3.9 0 0 0 5 5L15 16l-3.5 3.5a2.1 2.1 0 0 1-3-3L12 13Z"/></svg>
+      Services &amp; Prices
+    </button>
+    <button class="sheet-item" data-tab="anniversaries" onclick="showTab('anniversaries')">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
+      Anniversaries
+    </button>
+    <!-- Add Sub-Dealer, Stock Summary and Export moved to the Admin
+         Dashboard (admin.html) — confirmed two-interface split, Phase 2.2. -->
+    <div class="sheet-user">
+      <span id="loggedInAs"></span>
+      <button class="logout-btn" onclick="doLogout()">Log out</button>
+    </div>
+  </div>
+
+<script src="scanner.js"></script>
+<script>
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyH3-Dlh5dI4UnCWpc8Yv1wvCs5H6GuSq-XQ2AWMGEKkSBQ9ci9z1dL57CfiSNkKqVw/exec';
+const APP_ONLY_BRANDS = ['CEAT', 'Apollo', 'Goodyear', 'Continental'];
+let priceListCache = [];
+let lastClaimId = null;
+let lastPortalSummaryText = '';
+let servicesCache = [];
+
+// ---------- Auth (Phase 2.2) ----------
+// Stored in localStorage so login survives closing the tab — counter staff
+// shouldn't re-type a PIN all day. A convenience gate, not a security
+// boundary (see CLAUDE.md).
+const AUTH_KEY = 'sns_auth';
+
+function getAuth() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; }
+  catch (e) { return null; }
+}
+
+function requireLoginScreen() {
+  const auth = getAuth();
+  document.getElementById('loginScreen').classList.toggle('open', !auth);
+  if (auth) document.getElementById('loggedInAs').textContent = 'Logged in as ' + auth.name;
+}
+
+async function doLogin() {
+  const el = document.getElementById('status-login');
+  const phone = document.getElementById('login_phone').value.trim();
+  const pin = document.getElementById('login_pin').value.trim();
+  if (!phone || !pin) { el.textContent = 'Enter your mobile number and PIN.'; el.className = 'status error'; return; }
+  el.textContent = 'Checking...'; el.className = 'status';
+  try {
+    const result = await jsonp('login', { phone, pin }, { skipAuth: true });
+    if (result.error) { el.textContent = result.error; el.className = 'status error'; return; }
+    localStorage.setItem(AUTH_KEY, JSON.stringify({
+      phone, pin, staff_id: result.staff_id, name: result.name, role: result.role,
+    }));
+    document.getElementById('login_pin').value = '';
+    el.textContent = '';
+    requireLoginScreen();
+  } catch (err) { el.textContent = 'Error: ' + err.message; el.className = 'status error'; }
+}
+
+function doLogout() {
+  localStorage.removeItem(AUTH_KEY);
+  closeSheet();
+  requireLoginScreen();
+}
+
+function jsonp(action, params, opts) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now() + Math.floor(Math.random() * 1000);
+    window[cbName] = (data) => { resolve(data); delete window[cbName]; script.remove(); };
+    // Every request carries the stored credentials — the backend uses them to
+    // attribute actions (handled_by) and to guard Admin-only ones.
+    const auth = (opts && opts.skipAuth) ? null : getAuth();
+    const authParams = auth ? { auth_phone: auth.phone, auth_pin: auth.pin } : {};
+    const query = Object.entries({ action, callback: cbName, ...authParams, ...params })
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v ?? '')}`).join('&');
+    const script = document.createElement('script');
+    script.src = `${WEB_APP_URL}?${query}`;
+    script.onerror = () => reject(new Error('Network error'));
+    document.body.appendChild(script);
+  });
+}
+
+// ---------- Navigation ----------
+const SCREEN_NAMES = {
+  sell: 'Sell a Tyre', claim: 'Warranty Claim', price: 'Price List',
+  subdealer: 'Move to Sub-Dealer', lead: 'New Lead',
+  services: 'Services', anniversaries: 'Anniversaries',
+};
+// The three screens with their own permanent slot in the bottom nav.
+const PRIMARY_TABS = ['sell', 'price', 'claim'];
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('screenName').textContent = SCREEN_NAMES[name] || '';
+
+  // Highlight whichever control leads here. For a screen that lives in the
+  // sheet, More stays lit — otherwise the nav would look like nothing is
+  // selected while the staff member is clearly on a screen.
+  document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.sheet-item').forEach(b => b.classList.remove('active'));
+  if (PRIMARY_TABS.includes(name)) {
+    document.querySelector(`.navbtn[data-tab="${name}"]`).classList.add('active');
+  } else {
+    document.getElementById('moreBtn').classList.add('active');
+    const item = document.querySelector(`.sheet-item[data-tab="${name}"]`);
+    if (item) item.classList.add('active');
+  }
+
+  closeSheet();
+  window.scrollTo(0, 0);
+
+  if (name === 'price' && priceListCache.length === 0) loadPriceList();
+  if (name === 'anniversaries') loadAnniversaries();
+  if (name === 'services' && servicesCache.length === 0) loadServices();
+}
+
+function openSheet() {
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('sheetBackdrop').classList.add('open');
+}
+function closeSheet() {
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('sheetBackdrop').classList.remove('open');
+}
+// Back button closes the sheet rather than leaving the app — the reflex
+// action when a sheet is open is Back, not tapping outside it.
+window.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+// ---------- Scanning ----------
+// Shared implementation in scanner.js — one camera lifecycle for all three
+// scan points, with a confirm step so a misread code is never applied
+// silently. Reads the barcode/serial the manufacturer printed on the tyre.
+[
+  { buttonId: 'scanBtn-sell', inputId: 'sell_tyre_id', mountId: 'scanMount-sell' },
+  { buttonId: 'scanBtn-claim', inputId: 'claim_tyre_id', mountId: 'scanMount-claim' },
+  { buttonId: 'scanBtn-subdealer', inputId: 'sd_tyre_id', mountId: 'scanMount-subdealer' },
+].forEach(cfg => SNSScanner.attach(cfg));
+
+// ---------- Sell ----------
+async function submitSale() {
+  const el = document.getElementById('status-sell');
+  const tyreId = document.getElementById('sell_tyre_id').value;
+  el.textContent = 'Saving...'; el.className = 'status';
+  document.getElementById('jkPrefillWrap').style.display = 'none';
+  document.getElementById('portalSummaryWrap').style.display = 'none';
+  document.getElementById('portalSummaryBox').style.display = 'none';
+  try {
+    const result = await jsonp('recordSale', {
+      tyre_id: tyreId,
+      customer_name: document.getElementById('sell_customer_name').value,
+      customer_phone: document.getElementById('sell_customer_phone').value,
+      customer_address: document.getElementById('sell_customer_address').value,
+      customer_office_address: document.getElementById('sell_customer_office_address').value,
+      customer_dob: document.getElementById('sell_customer_dob').value,
+      vehicle_number: document.getElementById('sell_vehicle_number').value,
+      vehicle_name: document.getElementById('sell_vehicle_name').value,
+      car_model: document.getElementById('sell_car_model').value,
+      current_km: document.getElementById('sell_current_km').value,
+      source_referral: document.getElementById('sell_source_referral').value,
+      invoice_no: document.getElementById('sell_invoice_no').value,
+      branch: document.getElementById('sell_branch').value,
+      sold_via_sub_dealer_id: document.getElementById('sell_sub_dealer_id').value,
+    });
+    if (result.error) { el.textContent = result.error; el.className = 'status error'; return; }
+    el.textContent = 'Sale recorded. Warranty expires: ' + new Date(result.warranty_expiry_date).toLocaleDateString();
+
+    // If this tyre is a JK Tyre unit, JK requires the customer to self-register —
+    // offer the WhatsApp pre-fill link workaround.
+    const invInfo = await jsonp('getInventoryStatus', { tyre_id: tyreId });
+    if (invInfo && invInfo.brand === 'JK Tyre') {
+      document.getElementById('jkPrefillWrap').style.display = 'block';
+    }
+    if (invInfo && APP_ONLY_BRANDS.includes(invInfo.brand)) {
+      document.getElementById('portalSummaryWrap').style.display = 'block';
+    }
+  } catch (err) { el.textContent = 'Error: ' + err.message; el.className = 'status error'; }
+}
+
+async function sendJkPrefillLink() {
+  const tyreId = document.getElementById('sell_tyre_id').value;
+  const el = document.getElementById('status-sell');
+  const result = await jsonp('getJkPrefillLink', { tyre_id: tyreId });
+  if (result.error) { el.textContent = result.error; el.className = 'status error'; return; }
+  window.open(result.url, '_blank');
+}
+
+// ---------- Portal copy-paste helper (CEAT/Apollo/Goodyear/Continental) ----------
+async function showPortalSummary() {
+  const tyreId = document.getElementById('sell_tyre_id').value;
+  const box = document.getElementById('portalSummaryBox');
+  const result = await jsonp('getPortalSummary', { tyre_id: tyreId });
+  box.style.display = 'block';
+  if (result.error) { box.innerHTML = result.error; return; }
+  let html = '<h3>' + result.brand + ' Portal Registration Details</h3>';
+  result.fields.forEach(f => { html += `<div><strong>${f.label}:</strong> ${f.value}</div>`; });
+  html += '<button class="secondary" onclick="copyPortalSummary()">Copy All</button>';
+  box.innerHTML = html;
+  lastPortalSummaryText = result.text;
+}
+function copyPortalSummary() {
+  navigator.clipboard.writeText(lastPortalSummaryText || '').then(() => alert('Copied to clipboard.'));
+}
+
+// ---------- Warranty claim trail lookup ----------
+async function lookupTrail() {
+  const tyreId = document.getElementById('claim_tyre_id').value;
+  const el = document.getElementById('status-claim');
+  const trailEl = document.getElementById('trailResult');
+  el.textContent = 'Looking up...'; el.className = 'status';
+  try {
+    const result = await jsonp('getClaimTrail', { tyre_id: tyreId });
+    if (result.error) { el.textContent = result.error; el.className = 'status error'; trailEl.innerHTML = ''; return; }
+    el.textContent = '';
+    trailEl.innerHTML = `
+      <div class="trail-box">
+        <h3>Tyre</h3>
+        <div>${result.tyre.brand} ${result.tyre.pattern} — ${result.tyre.size} (${result.tyre.status})</div>
+        <h3>Sub-Dealer</h3>
+        <div>${result.sub_dealer ? result.sub_dealer.name + ' — ' + result.sub_dealer.phone : 'None — sold directly'}</div>
+        <h3>Sale / End Customer</h3>
+        <div>${result.sale ? result.sale.customer_name + ' — ' + result.sale.customer_phone + ' (Warranty till ' + new Date(result.sale.warranty_expiry_date).toLocaleDateString() + ')' : 'Not sold yet'}</div>
+      </div>`;
+    document.getElementById('otpSection').style.display = 'block';
+  } catch (err) { el.textContent = 'Error: ' + err.message; el.className = 'status error'; }
+}
+
+async function generateOtp() {
+  const tyreId = document.getElementById('claim_tyre_id').value;
+  const result = await jsonp('generateOtp', { tyre_id: tyreId });
+  lastClaimId = result.claim_id;
+  document.getElementById('otpDisplay').textContent = 'OTP: ' + result.otp_code + ' (relay this to the customer)';
+}
+
+async function verifyOtp() {
+  const code = document.getElementById('otp_input').value;
+  const el = document.getElementById('otpVerifyStatus');
+  if (!lastClaimId) { el.textContent = 'Generate an OTP first.'; el.className = 'status error'; return; }
+  const result = await jsonp('verifyOtp', { claim_id: lastClaimId, otp_code: code });
+  el.textContent = result.verified ? 'Verified ✓' : 'Does not match.';
+  el.className = result.verified ? 'status' : 'status error';
+}
+
+// ---------- Price list ----------
+async function loadPriceList() {
+  priceListCache = await jsonp('getPriceList', {});
+  renderPriceList();
+}
+// Three price levels, ceiling to floor: MRP / Negotiable (quote this first) /
+// Lowest Price (the floor — never go below). Staff see all three; the Lowest
+// Price column is styled as a warning so it reads as "don't go past this", and
+// this screen shouldn't be turned around to face the customer.
+function renderPriceList() {
+  const filter = (document.getElementById('price_filter').value || '').toLowerCase();
+  const filtered = priceListCache.filter(r => (r.brand || '').toLowerCase().includes(filter));
+  const wrap = document.getElementById('priceTableWrap');
+  if (!filtered.length) {
+    wrap.innerHTML = '<p class="empty-msg">No tyres match that brand.</p>';
+    return;
+  }
+  let html = '<table><thead><tr><th>Brand</th><th>Category</th><th>Ply</th><th>Pattern</th><th>Size</th>'
+           + '<th>MRP</th><th>Negotiable</th><th class="floor-col">Lowest Price</th></tr></thead><tbody>';
+  filtered.forEach(r => {
+    html += `<tr><td class="row-head" data-label="Brand">${r.brand}</td>`
+          + `<td data-label="Category">${r.category || ''}</td>`
+          + `<td data-label="Ply">${r.ply_rating || ''}</td>`
+          + `<td data-label="Pattern">${r.pattern}</td>`
+          + `<td data-label="Size">${r.size}</td>`
+          + `<td data-label="MRP">${r.mrp}</td>`
+          + `<td data-label="Negotiable">${r.negotiable_price ?? ''}</td>`
+          + `<td class="floor-col" data-label="Lowest">${r.lowest_price ?? ''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ---------- Sub-dealer stock move ----------
+async function moveToSubDealer() {
+  const el = document.getElementById('status-subdealer');
+  el.textContent = 'Saving...'; el.className = 'status';
+  try {
+    const result = await jsonp('moveToSubDealer', {
+      tyre_id: document.getElementById('sd_tyre_id').value,
+      sub_dealer_id: document.getElementById('sd_sub_dealer_id').value,
+    });
+    if (result.error) { el.textContent = result.error; el.className = 'status error'; return; }
+    el.textContent = 'Moved to sub-dealer ' + result.sub_dealer_id;
+  } catch (err) { el.textContent = 'Error: ' + err.message; el.className = 'status error'; }
+}
+
+// ---------- New lead (capture only — pipeline lives in the Admin Dashboard) ----------
+async function submitLead() {
+  const el = document.getElementById('status-lead');
+  el.textContent = 'Saving...'; el.className = 'status';
+  try {
+    const result = await jsonp('addLead', {
+      name: document.getElementById('lead_name').value,
+      phone: document.getElementById('lead_phone').value,
+      source: document.getElementById('lead_source').value,
+      category_interest: document.getElementById('lead_category').value,
+      notes: document.getElementById('lead_notes').value,
+    });
+    if (result.error) { el.textContent = result.error; el.className = 'status error'; return; }
+    el.textContent = 'Lead saved (' + result.lead_id + ').';
+    ['lead_name', 'lead_phone', 'lead_notes'].forEach(id => document.getElementById(id).value = '');
+  } catch (err) { el.textContent = 'Error: ' + err.message; el.className = 'status error'; }
+}
+
+// ---------- Upcoming anniversaries ----------
+async function loadAnniversaries() {
+  const wrap = document.getElementById('annivTableWrap');
+  wrap.innerHTML = 'Loading...';
+  const days = document.getElementById('anniv_days').value || 7;
+  const rows = await jsonp('getUpcomingAnniversaries', { days });
+  if (rows.length === 0) { wrap.innerHTML = '<p class="empty-msg">No purchase anniversaries in the next ' + days + ' days.</p>'; return; }
+  let html = '<table><thead><tr><th>Customer</th><th>Phone</th><th>Date</th><th>Days Away</th><th>Years</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr><td class="row-head" data-label="Customer">${r.customer_name}</td>`
+          + `<td data-label="Phone">${r.customer_phone}</td>`
+          + `<td data-label="Date">${new Date(r.anniversary_date).toLocaleDateString()}</td>`
+          + `<td data-label="Days away">${r.days_until === 0 ? 'Today' : r.days_until}</td>`
+          + `<td data-label="Years">${r.years}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ---------- Services (wheel balancing, alignment, nitrogen filling, punctures) ----------
+async function loadServices() {
+  servicesCache = await jsonp('getServices', {});
+  const select = document.getElementById('service_name');
+  select.innerHTML = '<option value="">Select a service...</option>' +
+    servicesCache.map(s => `<option value="${s.service_name}">${s.service_name}</option>`).join('');
+}
+function fillServicePrice() {
+  const name = document.getElementById('service_name').value;
+  const match = servicesCache.find(s => s.service_name === name);
+  document.getElementById('service_price').value = match ? match.price : '';
+}
+
+requireLoginScreen();
+</script>
+</body>
+</html>
