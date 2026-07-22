@@ -311,8 +311,9 @@
               </div>
             </div>
             <div class="row">
-              <div class="grow"><label>Message</label><input id="m_text" placeholder="Pick a template above, or write your own. {name} becomes the customer's name." /></div>
+              <div class="grow"><label>Message (free text — write anything; {name} becomes the customer's name)</label><input id="m_text" placeholder="Pick a template above, or write your own from scratch." /></div>
               <button class="btn" onclick="scheduleMessage()">Schedule</button>
+              <button class="btn ghost" onclick="saveTemplate('m_text')" title="Keep this message for reuse — it'll appear in the template dropdowns under My templates">Save as template</button>
             </div>
             <div id="status-addmessage" class="status"></div>
           </div>
@@ -333,8 +334,9 @@
               <div><label>Send On</label><input id="bc_send_on" type="date" /></div>
             </div>
             <div class="row">
-              <div class="grow"><label>Message ({name} becomes each customer's name)</label><input id="bc_text" /></div>
+              <div class="grow"><label>Message (free text — {name} becomes each customer's name)</label><input id="bc_text" /></div>
               <button class="btn" onclick="sendBroadcast()">Schedule for Selected</button>
+              <button class="btn ghost" onclick="saveTemplate('bc_text')" title="Keep this message for reuse">Save as template</button>
             </div>
             <div id="status-broadcast" class="status"></div>
           </div>
@@ -745,12 +747,38 @@ const MESSAGE_TEMPLATES = [
     text: 'Heads up, {name}: your tyre warranty ends soon. If anything feels off — vibration, pulling, uneven wear — come in NOW while it\'s still covered. — SNS Tyres' },
 ];
 
-document.getElementById('m_template').innerHTML =
-  '<option value="">— pick one —</option>' +
-  MESSAGE_TEMPLATES.map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
-document.getElementById('bc_template').innerHTML =
-  '<option value="">— pick one —</option>' +
-  MESSAGE_TEMPLATES.map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
+// Both dropdowns show built-ins plus Ankitaa's own saved templates ("My
+// templates" — rows on the MessageTemplates tab, saved from here or typed
+// straight into the Sheet). allTemplates is the combined, indexable list.
+let customTemplates = [];
+let allTemplates = MESSAGE_TEMPLATES.slice();
+function renderTemplateDropdowns() {
+  allTemplates = MESSAGE_TEMPLATES.concat(customTemplates.map(t => ({ label: t.label, text: t.text })));
+  const builtIn = MESSAGE_TEMPLATES.map((t, i) => `<option value="${i}">${esc(t.label)}</option>`).join('');
+  const custom = customTemplates.map((t, i) =>
+    `<option value="${MESSAGE_TEMPLATES.length + i}">${esc(t.label)}</option>`).join('');
+  const html = '<option value="">— pick one —</option>'
+    + '<optgroup label="Ready-made">' + builtIn + '</optgroup>'
+    + (custom ? '<optgroup label="My templates">' + custom + '</optgroup>' : '');
+  document.getElementById('m_template').innerHTML = html;
+  document.getElementById('bc_template').innerHTML = html;
+}
+async function loadCustomTemplates() {
+  const rows = await jsonp('getMessageTemplates', {});
+  if (!rows.error) { customTemplates = rows; renderTemplateDropdowns(); }
+}
+async function saveTemplate(inputId) {
+  const statusId = inputId === 'bc_text' ? 'status-broadcast' : 'status-addmessage';
+  const text = document.getElementById(inputId).value.trim();
+  if (!text) { setStatus(statusId, 'Write the message first, then save it as a template.', true); return; }
+  const label = prompt('Name this template (e.g. "Pooja season offer"):');
+  if (!label) return;
+  const result = await jsonp('addMessageTemplate', { label, text });
+  if (result.error) { setStatus(statusId, result.error, true); return; }
+  setStatus(statusId, '"' + result.label + '" saved — it\'s now in both template dropdowns, and editable any time on the MessageTemplates tab.');
+  loadCustomTemplates();
+}
+renderTemplateDropdowns();
 
 // ---------- Phone → customer auto-fetch (used on every phone field) ----------
 // Debounced; fires at 10 digits. Returns the fetched customer to the caller's
@@ -812,12 +840,14 @@ function applyTemplate() {
   if (i === '') return;
   const name = document.getElementById('m_name').value.trim();
   document.getElementById('m_text').value =
-    MESSAGE_TEMPLATES[i].text.replace(/\{name\}/g, name || '{name}');
+    allTemplates[i].text.replace(/\{name\}/g, name || '{name}');
 }
 
 let messagesCache = [];
 async function loadMessages() {
-  // The broadcast picker needs the customer list too — load both together.
+  // The broadcast picker needs the customer list, and the dropdowns need any
+  // saved custom templates — load them alongside the queue.
+  loadCustomTemplates();
   if (!customersCache.length) {
     const c = await jsonp('getAllCustomers', {});
     if (!c.error) customersCache = c;
@@ -870,7 +900,7 @@ function applyBroadcastTemplate() {
   const i = document.getElementById('bc_template').value;
   if (i === '') return;
   // Keep {name} literal here — the backend swaps in each recipient's own name.
-  document.getElementById('bc_text').value = MESSAGE_TEMPLATES[i].text;
+  document.getElementById('bc_text').value = allTemplates[i].text;
 }
 async function sendBroadcast() {
   const picked = Object.values(broadcastPicked);
